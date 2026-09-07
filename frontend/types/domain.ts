@@ -1,0 +1,54 @@
+﻿/** AUREXIS domain types */
+export type AppEnvironment = "development" | "test" | "production";
+export type DataMode = "LIVE" | "SIMULATION" | "MOCK" | "STALE" | "OFFLINE";
+export type SystemStatus = "ONLINE" | "DEGRADED" | "WARNING" | "OFFLINE" | "UNKNOWN";
+export type ComponentStatus = "healthy" | "unhealthy" | "degraded" | "NOT_CONFIGURED" | "CONFIGURED" | "NO_AGENTS" | "UNKNOWN" | "unknown";
+export interface ComponentHealth { status: ComponentStatus; error?: string; note?: string; latency_ms?: number; [key: string]: unknown; }
+export interface SystemHealth { status: "healthy" | "degraded" | "unhealthy"; version: string; environment: AppEnvironment; check_duration_ms: number; components: { backend: ComponentHealth; database: ComponentHealth; redis: ComponentHealth; brain: ComponentHealth; risk_engine: ComponentHealth; market_data: ComponentHealth; news: ComponentHealth; mt5: ComponentHealth; }; }
+export type RegimeState = "TREND_UP" | "TREND_DOWN" | "RANGE" | "BREAKOUT" | "HIGH_VOLATILITY" | "TRANSITION" | "UNKNOWN" | "NOT_CONFIGURED";
+export type StructureState = "BULLISH" | "BEARISH" | "NEUTRAL" | "INSUFFICIENT_DATA" | "UNKNOWN";
+export type TrendDirection = "BULLISH" | "BEARISH" | "NEUTRAL";
+export type TrendStrength = "STRONG" | "MODERATE" | "WEAK" | "FLAT";
+export type MomentumState = "SUPPORTING" | "NEUTRAL" | "DIVERGING";
+export type VolatilityState = "NORMAL" | "EXPANDING" | "CONTRACTING" | "ABNORMAL_HIGH" | "ABNORMAL_LOW";
+export type BrainMarketState = "INITIALIZING" | "WARMING_UP" | "READY" | "STALE" | "HALTED" | "ERROR";
+export interface MarketStructureState { htf_structure: StructureState; mtf_structure: StructureState; trend_direction: TrendDirection; trend_strength: TrendStrength; regime: RegimeState; momentum_state: MomentumState; volatility_state: VolatilityState; structure_aligned: boolean; trend_aligned: boolean; updated_at: string; }
+export interface MarketTick { symbol: string; bid: number; ask: number; spread_pts: number; timestamp: string; received_at: string; }
+export type NewsState = "CLEAR" | "PRE_EVENT" | "IN_EVENT" | "POST_EVENT" | "UNKNOWN" | "UNAVAILABLE" | "STALE";
+export interface NewsEvent { id: string; title: string; currency: string; impact: "HIGH" | "MEDIUM" | "LOW"; scheduled_at: string; actual?: string; forecast?: string; previous?: string; }
+export interface NewsSnapshot { state: NewsState; next_event?: NewsEvent; active_event?: NewsEvent; checked_at: string; provider?: string; }
+export type RiskState = "NORMAL" | "CAUTION" | "PROTECTED" | "STOPPED" | "EMERGENCY_STOP" | "NOT_CONFIGURED" | "UNKNOWN";
+export interface ProfitLockState { active: boolean; stage: number | null; session_peak_usd: number | null; protected_usd: number | null; current_pnl_usd: number | null; lock_threshold_usd: number | null; next_lock_distance: number | null; }
+export interface RiskSnapshot { account_id: string; state: RiskState; current_equity_usd: number; balance_usd: number; equity_peak_usd: number; current_drawdown_usd: number; current_drawdown_pct: number; protected_equity_usd?: number; daily_realized_pnl_usd: number; daily_loss_limit_usd: number | null; daily_loss_utilization_pct: number | null; open_exposure_usd: number; position_count: number; trading_allowed: boolean; block_reason?: string; block_code?: string; profit_lock: ProfitLockState; snapshot_at: string; }
+export interface RiskDecision { id: string; account_id: string; signal_id?: string; decision: "APPROVED" | "REJECTED" | "BLOCKED" | "EMERGENCY"; rule: string; reason: string; decided_at: string; }
+export type SetupType = "TREND_CONTINUATION" | "BREAKOUT" | "BULLISH_FAKEOUT" | "BEARISH_FAKEOUT";
+export interface BrainPipelineStage { name: string; state: string; status: "OK" | "BLOCKED" | "UNKNOWN" | "NOT_CONFIGURED"; detail?: string; updated_at: string; }
+export interface BrainSnapshot { account_id: string; market_state: BrainMarketState; regime: RegimeState; structure: MarketStructureState; strategy_version: string; pipeline: BrainPipelineStage[]; no_trade_reason?: string; no_trade_code?: string; updated_at: string; }
+export type SignalDirection = "BUY" | "SELL" | "NONE";
+export type SignalStatus = "CANDIDATE_FORMING" | "CANDIDATE_READY" | "NEWS_BLOCKED" | "PENDING_RISK" | "RISK_APPROVED" | "RISK_REJECTED" | "FORWARDED" | "EXPIRED" | "INVALIDATED";
+export type RejectionCode = "REGIME_INCOMPATIBLE" | "HTF_MTF_MISALIGNMENT" | "TREND_CONFLICT" | "INSUFFICIENT_CONFIDENCE" | "NEWS_BLOCKED" | "SPREAD_TOO_WIDE" | "VOLATILITY_ABNORMAL_HIGH" | "MARKET_NOT_READY" | "INDICATOR_NOT_CONFIGURED" | "DUPLICATE_SIGNAL_ACTIVE" | "SIGNAL_EXPIRED" | "SETUP_INVALIDATED" | "RISK_ENGINE_REJECTED" | "RISK_ENGINE_EMERGENCY" | "RISK_ENGINE_UNAVAILABLE";
+export interface EvidenceRecord { regime: RegimeState; regime_confidence: number | null; htf_structure: StructureState; mtf_structure: StructureState; structure_aligned: boolean; trend_direction: TrendDirection; trend_strength: TrendStrength; trend_aligned: boolean; momentum_state: MomentumState; volatility_state: VolatilityState; breakout_confirmed: boolean; spread_at_signal: number; spread_acceptable: boolean; news_state: NewsState; rejection_reasons: string[]; supporting_factors: string[]; }
+export interface CandidateSignal { signal_id: string; account_id: string; symbol: string; direction: SignalDirection; timestamp: string; expires_at: string; regime: RegimeState; structure_state_htf: StructureState; structure_state_mtf: StructureState; setup_type: SetupType; entry_reference: number; invalidation_reference: number; suggested_stop_loss: number | null; suggested_take_profit: number | null; confidence_score: number | null; evidence: EvidenceRecord; strategy_id: string; strategy_version: string; status: SignalStatus; rejection_code?: RejectionCode; correlation_id: string; }
+export type MT5ConnectionState = "CONNECTED" | "DISCONNECTED" | "CONNECTING" | "ERROR";
+export interface TradingAccount { id: string; label: string; broker: string; mt5_account_number: string; broker_currency: string; is_cent_account: boolean; cent_normalization_factor: number; is_active: boolean; mt5_connection_state: MT5ConnectionState; created_at: string; }
+export type TradeDirection = "BUY" | "SELL";
+export type PositionState = "OPEN" | "CLOSING" | "CLOSED" | "ERROR";
+export interface LivePosition { id: string; account_id: string; symbol: string; direction: TradeDirection; volume_lots: number; entry_price: number; current_price: number; stop_loss?: number; take_profit?: number; floating_pnl_usd: number; exposure_usd: number; duration_seconds: number; opened_at: string; state: PositionState; mt5_ticket?: number; signal_id?: string; }
+export interface ClosedTrade { id: string; account_id: string; symbol: string; direction: TradeDirection; volume_lots: number; entry_price: number; exit_price: number; stop_loss?: number; take_profit?: number; realized_pnl_usd: number; commission_usd: number; swap_usd: number; net_pnl_usd: number; opened_at: string; closed_at: string; duration_seconds: number; exit_reason: "TP" | "SL" | "MANUAL" | "RISK_STOP" | "UNKNOWN"; mt5_ticket?: number; signal_id?: string; }
+export interface DailyPnl { account_id: string; date: string; realized_pnl_usd: number; unrealized_pnl_usd: number; net_pnl_usd: number; trade_count: number; }
+export type CommandState = "CREATED" | "SENT" | "ACKNOWLEDGED" | "EXECUTING" | "FILLED" | "PARTIALLY_FILLED" | "REJECTED" | "EXPIRED" | "RECONCILED";
+export interface ExecutionCommand { command_id: string; account_id: string; signal_id: string; symbol: string; direction: TradeDirection; volume_lots: number; entry_type: "MARKET" | "LIMIT"; stop_loss?: number; take_profit?: number; state: CommandState; created_at: string; sent_at?: string; filled_at?: string; fill_price?: number; slippage_pts?: number; rejection_reason?: string; mt5_ticket?: number; strategy_version: string; }
+export type AgentStatus = "ONLINE" | "OFFLINE" | "ERROR" | "STALE" | "UNKNOWN";
+export interface MT5Agent { agent_id: string; account_id: string; label: string; broker: string; symbol: string; connection: MT5ConnectionState; status: AgentStatus; last_seen: string; heartbeat_at?: string; latency_ms?: number; version: string; build?: number; server?: string; }
+export type AuditSeverity = "DEBUG" | "INFO" | "WARNING" | "ERROR" | "CRITICAL";
+export type AuditComponent = "SYSTEM" | "BRAIN" | "RISK_ENGINE" | "EXECUTION_ENGINE" | "MT5_AGENT" | "NEWS_ENGINE" | "MARKET_DATA" | "ACCOUNT" | "AUTH";
+export interface AuditEvent { id: string; account_id?: string; severity: AuditSeverity; component: AuditComponent; event_type: string; description: string; detail?: Record<string, unknown>; timestamp: string; }
+export interface PerformanceStats { account_id: string; period_start: string; period_end: string; total_trades: number; winning_trades: number; losing_trades: number; win_rate_pct: number; total_pnl_usd: number; avg_win_usd: number; avg_loss_usd: number; max_drawdown_usd: number; max_drawdown_pct: number; profit_factor: number | null; sharpe_ratio: number | null; avg_duration_seconds: number; }
+export type BacktestStatus = "IDLE" | "RUNNING" | "COMPLETE" | "ERROR" | "NOT_CONFIGURED";
+export interface BacktestConfig { dataset_id: string; symbol: string; date_range_start: string; date_range_end: string; timeframe_htf: string | null; timeframe_mtf: string | null; strategy_version: string; config_version: string; execution_model: "MARKET" | "LIMIT"; spread_model: "FIXED" | "VARIABLE" | "FROM_DATA"; spread_pts: number | null; slippage_model: "ZERO" | "FIXED" | "FROM_DATA"; slippage_pts: number | null; commission_usd: number | null; swap_enabled: boolean; news_replay: boolean; risk_engine: boolean; }
+export interface BacktestResult { run_id: string; config: BacktestConfig; status: BacktestStatus; started_at: string; completed_at?: string; stats?: PerformanceStats; equity_curve?: Array<{ date: string; equity_usd: number }>; drawdown_curve?: Array<{ date: string; drawdown_pct: number }>; trades?: ClosedTrade[]; error?: string; }
+export type ConfigStatus = "DEFINED" | "UNDEFINED" | "NOT_CONFIGURED" | "PENDING_APPROVAL";
+export interface ConfigEntry { key: string; label: string; value: string | number | boolean | null; status: ConfigStatus; description: string; group: string; }
+export type WsEventType = "ACCOUNT_UPDATED" | "POSITION_UPDATED" | "TRADE_UPDATED" | "PNL_UPDATED" | "SIGNAL_CREATED" | "SIGNAL_UPDATED" | "COMMAND_CREATED" | "COMMAND_UPDATED" | "RISK_STATE_CHANGED" | "BRAIN_STATE_CHANGED" | "MT5_CONNECTED" | "MT5_DISCONNECTED" | "SYSTEM_ALERT" | "NEWS_STATE_CHANGED";
+export interface WsEvent<T = unknown> { event: WsEventType; version: 1; timestamp: string; correlation_id: string; account_id?: string; payload: T; }
+export type WsConnectionState = "CONNECTING" | "CONNECTED" | "DISCONNECTED" | "ERROR" | "STALE";

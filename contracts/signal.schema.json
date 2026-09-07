@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AUREXIS Signal (Draft)",
+  "type": "object",
+  "required": [
+    "signal_id",
+    "account_id",
+    "symbol",
+    "direction",
+    "created_at"
+  ],
+  "properties": {
+    "signal_id": {
+      "type": "string"
+    },
+    "account_id": {
+      "type": "string"
+    },
+    "symbol": {
+      "const": "XAUUSD"
+    },
+    "direction": {
+      "enum": [
+        "BUY",
+        "SELL",
+        "NONE"
+      ]
+    },
+    "confidence": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 1
+    },
+    "created_at": {
+      "type": "string"
+    },
+    "strategy_version": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}

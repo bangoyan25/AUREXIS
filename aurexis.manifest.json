@@ -1,0 +1,9 @@
+{
+  "project": "AUREXIS",
+  "version": "0.1.0-scaffold",
+  "specification_status": "LOCKED",
+  "specification_locked_date": "2026-09-06",
+  "specification_locked_by": "TASK-001",
+  "purpose": "Vibe-coding governance and engineering scaffold",
+  "note": "Master specification locked. Trading parameters (profit-lock formula, risk limits, indicator parameters, entry/exit rules, signal scoring) remain explicitly UNDEFINED until approved by user. No coding agent may invent them."
+}

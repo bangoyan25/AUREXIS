@@ -1,0 +1,94 @@
+[build-system]
+requires = ["setuptools>=72", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "aurexis"
+version = "0.1.0"
+description = "AUREXIS — Centralized trading intelligence and risk-management platform"
+requires-python = ">=3.12"
+dependencies = [
+    # Web framework
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    # Database
+    "sqlalchemy>=2.0",
+    "alembic>=1.14",
+    "asyncpg>=0.30",
+    "psycopg2-binary>=2.9",
+    # Redis
+    "redis>=5.2",
+    # Auth
+    "python-jose[cryptography]>=3.3",
+    "passlib[bcrypt]>=1.7",
+    "bcrypt>=4.0,<5.0",   # passlib 1.7 incompatible with bcrypt 5.x
+    "python-multipart>=0.0.12",
+    # Config / validation
+    "pydantic>=2.10",
+    "pydantic-settings>=2.7",
+    "python-dotenv>=1.0",
+    # Serialization
+    "orjson>=3.10",
+    # Structured logging
+    "structlog>=24.4",
+    # HTTP client (for MT5 transport, news, FX rates)
+    "httpx>=0.28",
+    # Scheduling
+    "apscheduler>=3.11",
+    # Money / precision arithmetic — Decimal is stdlib, no package needed
+    # Websockets
+    "websockets>=14.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "pytest-cov>=6.0",
+    "httpx>=0.28",          # TestClient
+    "mypy>=1.13",
+    "ruff>=0.8",
+    "factory-boy>=3.3",
+    "freezegun>=1.5",
+    "aiosqlite>=0.20",      # in-memory SQLite for unit tests
+    "email-validator>=2.0", # required by pydantic EmailStr
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["backend*", "brain*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "TCH"]
+ignore = ["E501", "B008", "TC001", "TC002", "TC003"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true
+exclude = ["migrations/", "tests/fixtures/"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "--strict-markers -v"
+markers = [
+    "unit: fast isolated unit tests",
+    "integration: tests requiring real DB/Redis",
+    "e2e: full end-to-end tests",
+]
+
+[tool.coverage.run]
+source = ["backend", "brain"]
+omit = ["tests/*", "migrations/*", "*/__init__.py"]
+
+[tool.coverage.report]
+fail_under = 70
+show_missing = true

@@ -1,0 +1,56 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Cinzel:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  scrollbar-color: #252D3D #0A0C10;
+  scrollbar-width: thin;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background-color: #0A0C10;
+  color: #E4EAF4;
+  font-family: "Montserrat", "Inter", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Focus ring — gold for brand consistency */
+:focus-visible {
+  outline: 1px solid #C8A84B;
+  outline-offset: 2px;
+}
+
+/* Financial number display — monospaced tabular */
+.font-financial {
+  font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* PNL semantics */
+.pnl-positive { color: #16A34A; }
+.pnl-negative { color: #DC2626; }
+.pnl-neutral  { color: #7A8BA6; }
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Custom scrollbar for webkit */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: #0A0C10; }
+::-webkit-scrollbar-thumb { background: #252D3D; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #3D4F6B; }
+

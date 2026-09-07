@@ -1,0 +1,65 @@
+# AUREXIS — Local development infrastructure
+# Requires: Docker Desktop or Docker Engine with Compose plugin
+#
+# Usage:
+#   docker compose up -d          start services in background
+#   docker compose down           stop services (keeps volumes)
+#   docker compose down -v        stop services + remove volumes (reset state)
+#   docker compose logs -f        follow logs
+#
+# Application services (backend, frontend) run locally via `make dev-*`
+# to allow fast reload during development.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: aurexis_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: aurexis
+      POSTGRES_USER: aurexis
+      POSTGRES_PASSWORD: change-me-locally
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aurexis -d aurexis"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    container_name: aurexis_redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --save ""
+      --appendonly no
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  default:
+    name: aurexis_dev
+    driver: bridge
+

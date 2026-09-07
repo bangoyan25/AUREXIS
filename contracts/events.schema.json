@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AUREXIS Event (Draft)",
+  "type": "object",
+  "required": [
+    "event_id",
+    "event_type",
+    "created_at"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string"
+    },
+    "event_type": {
+      "type": "string"
+    },
+    "account_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "created_at": {
+      "type": "string"
+    },
+    "payload": {
+      "type": "object"
+    }
+  }
+}

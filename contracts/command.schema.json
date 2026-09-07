@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AUREXIS Trade Command (Draft)",
+  "type": "object",
+  "required": [
+    "command_id",
+    "account_id",
+    "symbol",
+    "side",
+    "created_at",
+    "expires_at"
+  ],
+  "properties": {
+    "command_id": {
+      "type": "string"
+    },
+    "account_id": {
+      "type": "string"
+    },
+    "symbol": {
+      "const": "XAUUSD"
+    },
+    "side": {
+      "enum": [
+        "BUY",
+        "SELL"
+      ]
+    },
+    "volume": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "sl": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "tp": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "created_at": {
+      "type": "string"
+    },
+    "expires_at": {
+      "type": "string"
+    },
+    "strategy_version": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "risk_snapshot_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "signature": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}
