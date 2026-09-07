@@ -245,6 +245,11 @@ Total tests: 355 passed
   - 17 regression tests in `tests/test_migrations_env.py` covering precedence, normalization, error conditions, diagnostic logging, and credential masking.
   - Live trading strictly DISABLED. Migration 003 remains required before application startup. Zero credentials committed.
 
+- **Railway Production Dependency Fix (2026-09-07):**
+  - Root cause: `email-validator>=2.0` was listed under `[project.optional-dependencies].dev` in `pyproject.toml`. Production Dockerfile runs `pip install --no-cache-dir .` without `--extra dev`. At startup, FastAPI auth router evaluated `pydantic.EmailStr` fields and crashed with `ImportError: email-validator is not installed, run pip install pydantic[email]`.
+  - Fix: Moved `email-validator>=2.0` into `[project.dependencies]` in `pyproject.toml`.
+  - Added regression test suite `tests/test_production_dependencies.py` verifying `email-validator` is in `project.dependencies`, direct `email_validator` import & execution works, and Pydantic `EmailStr` validates correctly.
+
 - **Live Trading:** DISABLED. No change to any trading invariant.
 
 

@@ -69,3 +69,19 @@ def test_auth_requests_validate_email_successfully() -> None:
             password="ValidPassword123!",
             display_name="Trader One",
         )
+
+
+def test_pydantic_email_validator_direct_import_and_execution() -> None:
+    """Verify email_validator module is directly importable and functional."""
+    import email_validator
+    from pydantic import EmailStr, TypeAdapter
+
+    # Direct email-validator execution
+    res = email_validator.validate_email("test@aurexis.io", check_deliverability=False)
+    assert res.normalized == "test@aurexis.io"
+
+    # Pydantic EmailStr validation
+    adapter: TypeAdapter[EmailStr] = TypeAdapter(EmailStr)
+    validated = adapter.validate_python("user@example.com")
+    assert validated == "user@example.com"
+

@@ -57,6 +57,12 @@
   - Docker local verification: Docker CLI NOT AVAILABLE on host — Railway CI/CD builder required for final Docker verification.
   - Committed `fix: stabilize Railway Python build` and pushed to `origin/main`.
 
+- [x] TASK-RW08: Include email-validator in production dependencies — **DONE 2026-09-07**
+  - Root cause: `email-validator>=2.0` listed in `[project.optional-dependencies].dev`. Docker production container uses `pip install --no-cache-dir .` without `--extra dev`. Startup crashed on `from pydantic import EmailStr` in `backend/api/v1/auth.py` with `ImportError: email-validator is not installed, run pip install pydantic[email]`.
+  - Fix: Moved `email-validator>=2.0` into `[project.dependencies]` in `pyproject.toml`.
+  - Added regression test `tests/test_production_dependencies.py` verifying production dependency declaration, direct `email_validator` import and execution, and `EmailStr` Pydantic models.
+  - All gates pass: 347/347 pytest, mypy clean (75 files), ruff clean, 65/65 Jest, Next.js build clean. Live trading strictly DISABLED.
+
 
 ## Phase 11 — Runtime Infrastructure Verification & Git Backup
 
