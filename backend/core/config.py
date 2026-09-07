@@ -17,6 +17,10 @@ from typing import Literal
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# Railway injects PORT as the assigned listener port for each service.
+# BACKEND_PORT is the local/default override.
+# The canonical start command should use: --port ${PORT:-8000}
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -35,6 +39,14 @@ class Settings(BaseSettings):
     # ── Backend server ─────────────────────────────────────────────────────
     BACKEND_HOST: str = "0.0.0.0"
     BACKEND_PORT: int = 8000
+    PORT: int | None = Field(
+        default=None,
+        description="Railway or cloud provider assigned dynamic port (PORT env var)",
+    )
+    CORS_ORIGINS: str = Field(
+        default="",
+        description="Comma-separated allowed CORS origins for production",
+    )
 
     # ── Database ───────────────────────────────────────────────────────────
     DATABASE_URL: str = Field(
@@ -104,6 +116,10 @@ class Settings(BaseSettings):
 
     # ── Frontend ───────────────────────────────────────────────────────────
     NEXT_PUBLIC_API_URL: str = "http://localhost:8000"
+    NEXT_PUBLIC_API_BASE_URL: str | None = Field(
+        default=None,
+        description="Railway backend URL for frontend (alias for NEXT_PUBLIC_API_URL)",
+    )
     NEXT_PUBLIC_WS_URL: str = "ws://localhost:8000"
 
     # ── Derived properties ─────────────────────────────────────────────────
@@ -118,6 +134,42 @@ class Settings(BaseSettings):
     @property
     def is_test(self) -> bool:
         return self.APP_ENV == "test"
+
+    @property
+    def effective_port(self) -> int:
+        """Return Railway PORT if set, otherwise BACKEND_PORT."""
+        return self.PORT if self.PORT is not None else self.BACKEND_PORT
+
+    @property
+    def async_database_url(self) -> str:
+        """
+        Return asyncpg-compatible database URL.
+        Converts standard postgresql:// or postgres:// (supplied by Railway / cloud providers)
+        into postgresql+asyncpg:// scheme required by SQLAlchemy async engine.
+        """
+        url = self.DATABASE_URL
+        if url.startswith("postgresql://"):
+            return "postgresql+asyncpg://" + url[len("postgresql://"):]
+        if url.startswith("postgres://"):
+            return "postgresql+asyncpg://" + url[len("postgres://"):]
+        return url
+
+    @property
+    def allowed_cors_origins(self) -> list[str]:
+        """
+        Return allowed CORS origins.
+        Localhost always allowed in development and test modes.
+        Production origins supplied via CORS_ORIGINS (comma-separated).
+        """
+        origins: list[str] = []
+        if self.is_development or self.is_test:
+            origins.extend(["http://localhost:3000", "http://127.0.0.1:3000"])
+        if self.CORS_ORIGINS:
+            for item in self.CORS_ORIGINS.split(","):
+                stripped = item.strip()
+                if stripped and stripped not in origins:
+                    origins.append(stripped)
+        return origins
 
     def require_jwt_secret(self) -> str:
         """

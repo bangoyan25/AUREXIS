@@ -54,6 +54,9 @@ def get_database_url() -> str:
         )
     # Normalize: replace async driver prefix if present
     url = url.replace("postgresql+asyncpg://", "postgresql://")
+    # Normalize: replace legacy postgres:// scheme (Railway / Heroku style)
+    if url.startswith("postgres://"):
+        url = "postgresql://" + url[len("postgres://"):]
     url = url.replace("postgresql+aiosqlite://", "sqlite:///")
     return url
 

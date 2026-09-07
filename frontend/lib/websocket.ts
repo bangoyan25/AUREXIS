@@ -8,8 +8,43 @@
 
 import type { WsConnectionState, WsEvent, WsEventType } from "@/types/domain";
 
-const WS_BASE =
-  process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:8000";
+/**
+ * Derive the WebSocket base URL.
+ *
+ * Priority:
+ *   1. NEXT_PUBLIC_WS_URL — explicit WS URL (wss:// for production).
+ *   2. NEXT_PUBLIC_API_BASE_URL — HTTP(S) API URL, converted to WS(S) scheme.
+ *   3. NEXT_PUBLIC_API_URL — legacy HTTP(S) API URL, converted to WS(S) scheme.
+ *   4. Browser: derive scheme from window.location (preserves HTTPS→WSS).
+ *   5. Static/SSR fallback: ws://localhost:8000
+ *
+ * If an http:// or https:// URL is supplied for the WS base, it is
+ * automatically converted to ws:// or wss:// respectively, so operators
+ * can set only NEXT_PUBLIC_API_BASE_URL without also setting NEXT_PUBLIC_WS_URL.
+ */
+function getWsBaseUrl(): string {
+  const candidateUrls = [
+    process.env.NEXT_PUBLIC_WS_URL,
+    process.env.NEXT_PUBLIC_API_BASE_URL,
+    process.env.NEXT_PUBLIC_API_URL,
+  ];
+  for (const url of candidateUrls) {
+    if (url) {
+      // Convert http(s) to ws(s) if caller supplied an HTTP URL
+      return url
+        .replace(/^https:\/\//i, "wss://")
+        .replace(/^http:\/\//i, "ws://");
+    }
+  }
+  // Browser runtime: derive protocol from window.location so HTTPS→WSS works
+  if (typeof window !== "undefined") {
+    const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+    return `${proto}//${window.location.host}`;
+  }
+  return "ws://localhost:8000";
+}
+
+const WS_BASE = getWsBaseUrl();
 
 type EventHandler<T = unknown> = (event: WsEvent<T>) => void;
 type StateChangeCallback = (state: WsConnectionState) => void;

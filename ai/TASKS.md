@@ -1,5 +1,38 @@
 # AUREXIS Task Board
 
+## Phase 12 — Railway Deployment Readiness & Hardening
+
+- [x] TASK-RW01: Repository audit & Railway architecture definition — **DONE 2026-09-07**
+  - Backend/PostgreSQL/Redis/Frontend architecture defined.
+  - Zero mock substitutions for real functionality; trading remains disabled.
+
+- [x] TASK-RW02: Backend Railway compatibility hardening — **DONE 2026-09-07**
+  - Dynamic `PORT` environment variable support added to `Settings`.
+  - Database URL scheme normalizer (`async_database_url`) added: `postgresql://` and `postgres://` → `postgresql+asyncpg://`.
+  - CORS origins made configurable via `CORS_ORIGINS` env var (`allowed_cors_origins`).
+  - Migration environment (`migrations/env.py`) normalized for `postgres://` URLs.
+  - 13 new unit tests in `tests/test_config.py` pass; 326/326 total backend pytest pass.
+
+- [x] TASK-RW03: Frontend Railway URL & WebSocket compatibility — **DONE 2026-09-07**
+  - `NEXT_PUBLIC_API_BASE_URL` alias support in `frontend/lib/api.ts` and `next.config.js`.
+  - `getWsBaseUrl()` helper in `frontend/lib/websocket.ts` handles HTTPS → WSS conversion and auto-derivation.
+  - 65/65 Jest tests pass; ESLint clean; Next.js 23 static pages compile cleanly.
+
+- [x] TASK-RW04: Railway deployment configuration — **DONE 2026-09-07**
+  - Root `Dockerfile` (Python 3.12-slim, non-root `appuser`, Alembic + Uvicorn entrypoint).
+  - `railway.json` for backend service (Dockerfile builder, health check `/api/v1/health/live`).
+  - `frontend/railway.json` for frontend service (Nixpacks builder, `npm start`).
+
+- [x] TASK-RW05: Railway deployment documentation — **DONE 2026-09-07**
+  - `docs/RAILWAY_DEPLOYMENT.md` created: architecture, required variables, migration procedure, WS URL behavior, health probes, secrets, rollback, local vs Railway matrix.
+  - `.env.example` updated with `CORS_ORIGINS` and Railway frontend guidance.
+
+- [x] TASK-RW06: Test verification & git backup — **DONE 2026-09-07**
+  - Full test suite verified.
+  - Committed and pushed to `origin/main`.
+
+
+
 ## Phase 11 — Runtime Infrastructure Verification & Git Backup
 
 - [x] TASK-R01: Docker CLI availability check — **DONE 2026-09-06**

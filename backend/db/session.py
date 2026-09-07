@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 # ── Engine ────────────────────────────────────────────────────────────────
 engine: AsyncEngine = create_async_engine(
-    settings.DATABASE_URL,
+    settings.async_database_url,
     echo=settings.APP_ENV == "development",
     pool_pre_ping=True,
     pool_size=5,

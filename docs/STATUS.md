@@ -203,7 +203,37 @@ Total tests: 355 passed
   - ruff: clean.
   - End-to-end acceptance pipeline test: `tests/test_local_acceptance_pipeline.py` PASSES (covers full causal chain).
 
-## Phase 11 — Runtime Infrastructure & Git Backup Status — 2026-09-06
+## Phase 12 — Railway Deployment Readiness — 2026-09-07
+
+- **Repository Audit:** Complete. All Railway blockers addressed.
+
+- **Backend Railway Changes:**
+  - `backend/core/config.py`: Added `PORT` field (Railway dynamic port), `CORS_ORIGINS` field (production comma-separated origins), `effective_port` property, `async_database_url` property (normalizes `postgresql://`/`postgres://` → `postgresql+asyncpg://`), `allowed_cors_origins` property.
+  - `backend/db/session.py`: Engine now uses `settings.async_database_url` (accepts Railway-provided URLs without `+asyncpg` prefix).
+  - `backend/main.py`: CORS now uses `settings.allowed_cors_origins` (env-configurable for production).
+  - `migrations/env.py`: Added `postgres://` → `postgresql://` normalization for Railway-provided `DATABASE_URL`.
+
+- **Frontend Railway Changes:**
+  - `frontend/lib/api.ts`: Added `NEXT_PUBLIC_API_BASE_URL` fallback before `NEXT_PUBLIC_API_URL`.
+  - `frontend/lib/websocket.ts`: Added `getWsBaseUrl()` helper — auto-converts `https://`→`wss://`, derives from `NEXT_PUBLIC_API_BASE_URL`, falls back to `window.location`, then local default.
+  - `frontend/next.config.js`: Exposes `NEXT_PUBLIC_API_BASE_URL` in env block.
+
+- **Deployment Configuration Created:**
+  - `Dockerfile` — production backend image (python:3.12-slim, non-root UID 10001, alembic + uvicorn CMD).
+  - `railway.json` — backend Railway config (Dockerfile builder, health check `/api/v1/health/live`, ON_FAILURE restart).
+  - `frontend/railway.json` — frontend Railway config (Nixpacks builder, `npm start`).
+
+- **Documentation Created:**
+  - `docs/RAILWAY_DEPLOYMENT.md` — full Railway architecture, env vars, migration procedure, WebSocket URL behavior, health probes, secrets, rollback, local vs Railway matrix.
+
+- **Tests:** 326/326 pytest pass (13 new Railway readiness tests added to `tests/test_config.py`).
+- **Type-check:** mypy clean (75 files).
+- **Lint:** ruff clean.
+- **Frontend:** 65/65 Jest pass, ESLint clean, Next.js 23 pages build clean.
+
+- **Live Trading:** DISABLED. No change to any trading invariant.
+
+
 
 - **Docker CLI Availability:**
   - Docker CLI: NOT AVAILABLE on host machine (`CommandNotFoundException`).

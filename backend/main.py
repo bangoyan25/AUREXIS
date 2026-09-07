@@ -101,19 +101,10 @@ def create_app() -> FastAPI:
 
     # ── CORS ─────────────────────────────────────────────────────────────
     # Development: allow localhost origins.
-    # Production: restrict to approved origins only.
-    allowed_origins = (
-        [
-            "http://localhost:3000",
-            "http://127.0.0.1:3000",
-        ]
-        if settings.is_development or settings.is_test
-        else []  # Must be explicitly set in production configuration
-    )
-
+    # Production: restrict to approved origins (configured via CORS_ORIGINS).
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=allowed_origins,
+        allow_origins=settings.allowed_cors_origins,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
         allow_headers=["Authorization", "Content-Type", "X-Correlation-ID"],

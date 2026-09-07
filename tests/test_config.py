@@ -105,3 +105,88 @@ class TestConfigJwtSecurity:
         cfg = Settings(JWT_SECRET=secret)
         # SecretStr must not appear in default repr
         assert secret not in repr(cfg.JWT_SECRET)
+
+
+@pytest.mark.unit
+class TestRailwayReadiness:
+    """Settings additions required for Railway deployment."""
+
+    def test_port_defaults_to_none(self) -> None:
+        cfg = Settings()
+        assert cfg.PORT is None
+
+    def test_effective_port_falls_back_to_backend_port(self) -> None:
+        cfg = Settings()
+        assert cfg.effective_port == cfg.BACKEND_PORT
+
+    def test_effective_port_uses_railway_port(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("PORT", "4567")
+        cfg = Settings()
+        assert cfg.effective_port == 4567
+
+    def test_async_database_url_passthrough(self) -> None:
+        cfg = Settings(DATABASE_URL="postgresql+asyncpg://user:pass@host:5432/db")
+        assert cfg.async_database_url == "postgresql+asyncpg://user:pass@host:5432/db"
+
+    def test_async_database_url_normalizes_postgresql_scheme(self) -> None:
+        cfg = Settings(DATABASE_URL="postgresql://user:pass@host:5432/db")
+        assert cfg.async_database_url == "postgresql+asyncpg://user:pass@host:5432/db"
+
+    def test_async_database_url_normalizes_postgres_scheme(self) -> None:
+        """Railway PostgreSQL plugin provides postgres:// (legacy scheme)."""
+        cfg = Settings(DATABASE_URL="postgres://user:pass@host:5432/db")
+        assert cfg.async_database_url == "postgresql+asyncpg://user:pass@host:5432/db"
+
+    def test_cors_origins_empty_by_default(self) -> None:
+        cfg = Settings()
+        assert cfg.CORS_ORIGINS == ""
+
+    def test_allowed_cors_origins_includes_localhost_in_dev(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("APP_ENV", "development")
+        cfg = Settings()
+        assert "http://localhost:3000" in cfg.allowed_cors_origins
+        assert "http://127.0.0.1:3000" in cfg.allowed_cors_origins
+
+    def test_allowed_cors_origins_includes_localhost_in_test(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("APP_ENV", "test")
+        cfg = Settings()
+        assert "http://localhost:3000" in cfg.allowed_cors_origins
+
+    def test_allowed_cors_origins_empty_in_production_without_cors_origins(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("APP_ENV", "production")
+        cfg = Settings(APP_ENV="production", CORS_ORIGINS="")
+        assert cfg.allowed_cors_origins == []
+
+    def test_allowed_cors_origins_respects_cors_origins_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("APP_ENV", "production")
+        cfg = Settings(
+            APP_ENV="production",
+            CORS_ORIGINS="https://frontend.up.railway.app,https://app.aurexis.io",
+        )
+        origins = cfg.allowed_cors_origins
+        assert "https://frontend.up.railway.app" in origins
+        assert "https://app.aurexis.io" in origins
+
+    def test_allowed_cors_origins_strips_whitespace(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("APP_ENV", "production")
+        cfg = Settings(
+            APP_ENV="production",
+            CORS_ORIGINS="  https://frontend.up.railway.app  , https://app.aurexis.io  ",
+        )
+        origins = cfg.allowed_cors_origins
+        assert "https://frontend.up.railway.app" in origins
+        assert "https://app.aurexis.io" in origins
+
+    def test_cors_origins_in_dev_includes_both_localhost_and_extra(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("APP_ENV", "development")
+        cfg = Settings(
+            APP_ENV="development",
+            CORS_ORIGINS="https://staging.aurexis.io",
+        )
+        origins = cfg.allowed_cors_origins
+        assert "http://localhost:3000" in origins
+        assert "https://staging.aurexis.io" in origins
