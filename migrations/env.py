@@ -8,6 +8,7 @@ for autogenerate / offline mode.
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 from logging.config import fileConfig
 
@@ -39,6 +40,8 @@ except AttributeError:
 # All models share one Base (single registry) — one metadata object for Alembic.
 target_metadata = Base.metadata
 
+log = logging.getLogger("alembic.env")
+
 
 def get_database_url() -> str:
     """
@@ -53,6 +56,11 @@ def get_database_url() -> str:
       - postgresql+asyncpg://  →  postgresql://   (strip asyncpg prefix)
       - postgresql+aiosqlite:// →  sqlite:///      (test/in-memory SQLite)
       - postgres://            →  postgresql://    (Railway/Heroku legacy scheme)
+
+    Diagnostics emitted (NO credentials, usernames, passwords, or secrets logged):
+      - ALEMBIC_DATABASE_URL configured: yes / no
+      - DATABASE_URL configured: yes / no
+      - Selected source: ALEMBIC_DATABASE_URL / DATABASE_URL
     """
     # Load .env if present — does NOT overwrite variables already in the environment.
     # Priority is therefore: real env vars (Railway / Docker / shell) > .env > defaults.
@@ -60,16 +68,36 @@ def get_database_url() -> str:
     # In local development the .env file populates variables not already set in the shell.
     load_dotenv(find_dotenv(usecwd=True), override=False)
 
-    raw = (
-        os.environ.get("ALEMBIC_DATABASE_URL")
-        or os.environ.get("DATABASE_URL")
+    alembic_url = os.environ.get("ALEMBIC_DATABASE_URL") or ""
+    database_url = os.environ.get("DATABASE_URL") or ""
+
+    # ── Diagnostics (safe — no credentials logged) ──────────────────────────
+    log.info(
+        "Alembic database URL resolution: "
+        "ALEMBIC_DATABASE_URL configured=%s, "
+        "DATABASE_URL configured=%s",
+        "yes" if alembic_url else "no",
+        "yes" if database_url else "no",
     )
-    if not raw:
+
+    # ── Precedence ──────────────────────────────────────────────────────────
+    if alembic_url:
+        raw = alembic_url
+        selected_source = "ALEMBIC_DATABASE_URL"
+    elif database_url:
+        raw = database_url
+        selected_source = "DATABASE_URL"
+    else:
         raise RuntimeError(
             "No database URL configured for Alembic migrations. "
             "Set DATABASE_URL (preferred — Railway provides this automatically from "
-            "the PostgreSQL plugin) or ALEMBIC_DATABASE_URL in your environment."
+            "the PostgreSQL plugin via ${{Postgres.DATABASE_URL}}) "
+            "or ALEMBIC_DATABASE_URL in your environment. "
+            "Neither variable is currently set."
         )
+
+    log.info("Alembic database URL selected source: %s", selected_source)
+
     url = raw
     # Strip asyncpg prefix — Alembic uses psycopg2 sync driver
     url = url.replace("postgresql+asyncpg://", "postgresql://")

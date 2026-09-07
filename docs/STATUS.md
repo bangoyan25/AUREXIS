@@ -226,7 +226,7 @@ Total tests: 355 passed
 - **Documentation Created:**
   - `docs/RAILWAY_DEPLOYMENT.md` — full Railway architecture, env vars, migration procedure, WebSocket URL behavior, health probes, secrets, rollback, local vs Railway matrix.
 
-- **Tests:** 338/338 pytest pass (12 new migration regression tests added to `tests/test_migrations_env.py`, 13 Railway readiness tests in `tests/test_config.py`).
+- **Tests:** 343/343 pytest pass (17 migration regression and diagnostic tests in `tests/test_migrations_env.py`, 13 Railway readiness tests in `tests/test_config.py`).
 - **Type-check:** mypy clean (75 files).
 - **Lint:** ruff clean.
 - **Frontend:** 65/65 Jest pass, ESLint clean, Next.js 23 pages build clean.
@@ -237,15 +237,13 @@ Total tests: 355 passed
   - Dockerfile updated: deterministic `python -m pip install --upgrade pip setuptools wheel && python -m pip install --no-cache-dir .`.
   - Docker local verification: Docker CLI unavailable on host; Docker build verification delegated to Railway CI/CD builder.
 
-- **Railway Database URL Migration Fix (2026-09-07):**
-  - Root cause: `migrations/env.py:get_database_url()` raised `RuntimeError: No database URL configured. Set ALEMBIC_DATABASE_URL in your .env file.` when Railway only injected `DATABASE_URL` and no `.env` file existed in the Docker container.
-  - Fix: Updated `migrations/env.py:get_database_url()` to follow clean precedence:
-    1. `ALEMBIC_DATABASE_URL` (explicit override).
-    2. `DATABASE_URL` (Railway standard; stripped of `asyncpg` / `aiosqlite` prefixes; `postgres://` normalized to `postgresql://`).
-    3. `.env` file via lazy `load_dotenv()` for local developer workflows.
-    4. Explicit `RuntimeError` if no URL configured — mentions `DATABASE_URL` as primary variable.
-  - Added 12 unit tests in `tests/test_migrations_env.py` covering precedence, normalization (`postgres://`, `asyncpg`, `aiosqlite`), and error conditions without creating fake/default URLs.
-  - Live trading remains strictly DISABLED. Migration 003 remains required before application startup. No credentials committed.
+- **Railway Database URL Migration Compatibility (2026-09-07):**
+  - Root cause: `migrations/env.py:get_database_url()` raised `RuntimeError: No database URL configured. Set ALEMBIC_DATABASE_URL in your .env file.` when Railway provided `DATABASE_URL` and container lacked `.env` file.
+  - Precedence fixed: `ALEMBIC_DATABASE_URL` (explicit override) → `DATABASE_URL` (Railway PostgreSQL default) → lazy `.env` load (local dev) → actionable `RuntimeError`.
+  - Safe diagnostics added: logs `ALEMBIC_DATABASE_URL configured=yes/no`, `DATABASE_URL configured=yes/no`, and `selected source: ...` without logging usernames, passwords, tokens, or connection strings.
+  - Driver separation preserved: Alembic normalizes to sync `postgresql://` (psycopg2); application engine uses `settings.async_database_url` (`postgresql+asyncpg://`).
+  - 17 regression tests in `tests/test_migrations_env.py` covering precedence, normalization, error conditions, diagnostic logging, and credential masking.
+  - Live trading strictly DISABLED. Migration 003 remains required before application startup. Zero credentials committed.
 
 - **Live Trading:** DISABLED. No change to any trading invariant.
 

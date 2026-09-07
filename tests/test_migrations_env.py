@@ -1,13 +1,20 @@
 """
 Regression tests for migrations/env.py:get_database_url().
 
-Verifies URL resolution precedence, normalization, and error behavior.
-All tests manipulate os.environ directly via monkeypatch.
+Verifies URL resolution precedence, normalization, error behavior,
+safe diagnostic logging (no credentials), and async application URL integrity.
 
 Precedence:
   1. ALEMBIC_DATABASE_URL — explicit override, highest priority.
   2. DATABASE_URL         — Railway PostgreSQL plugin provides this.
   3. RuntimeError         — no usable URL found; fail clearly.
+
+Test classes:
+  TestAlembicDatabaseUrlPrecedence    — ALEMBIC_DATABASE_URL > DATABASE_URL precedence
+  TestAlembicDatabaseUrlNormalization — URL scheme normalization for psycopg2
+  TestAlembicDatabaseUrlErrors        — clear failure with no credentials
+  TestAlembicDatabaseUrlDiagnostics   — safe logging (no credentials in log output)
+  TestAsyncApplicationUrlRemainsCorrect — settings.async_database_url stays correct
 """
 
 from __future__ import annotations
@@ -144,4 +151,100 @@ class TestAlembicDatabaseUrlErrors:
         """No invented placeholder URL is ever returned when config is missing."""
         with pytest.raises(RuntimeError):
             _get_database_url()
+
+
+@pytest.mark.unit
+class TestAlembicDatabaseUrlDiagnostics:
+    """Safe diagnostic logging without credential exposure."""
+
+    def test_diagnostics_emitted_for_database_url(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Diagnostic log shows configured status and selected source without credentials."""
+        secret_password = "SuperSecretPassword123!"
+        monkeypatch.setenv(
+            "DATABASE_URL", f"postgresql://appuser:{secret_password}@postgres.railway.internal:5432/railway"
+        )
+        with caplog.at_level("INFO", logger="alembic.env"):
+            url = _get_database_url()
+
+        assert "postgresql://appuser:" in url
+        # Verify diagnostic logs were generated
+        log_text = caplog.text
+        assert "Alembic database URL resolution:" in log_text
+        assert "DATABASE_URL configured=yes" in log_text
+        assert "ALEMBIC_DATABASE_URL configured=no" in log_text
+        assert "selected source: DATABASE_URL" in log_text
+
+        # CRITICAL: Secret credentials must NEVER appear in logs
+        assert secret_password not in log_text
+        assert "postgres.railway.internal" not in log_text
+
+    def test_diagnostics_emitted_for_alembic_database_url(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Diagnostic log shows ALEMBIC_DATABASE_URL as selected source."""
+        secret_token = "ultra_secret_token_abc987"
+        monkeypatch.setenv(
+            "ALEMBIC_DATABASE_URL",
+            f"postgresql://migrator:{secret_token}@custom-host:5432/proddb",
+        )
+        monkeypatch.setenv(
+            "DATABASE_URL", "postgresql://app:other_secret@postgres:5432/db"
+        )
+        with caplog.at_level("INFO", logger="alembic.env"):
+            url = _get_database_url()
+
+        assert "custom-host" in url
+        log_text = caplog.text
+        assert "Alembic database URL resolution:" in log_text
+        assert "ALEMBIC_DATABASE_URL configured=yes" in log_text
+        assert "DATABASE_URL configured=yes" in log_text
+        assert "selected source: ALEMBIC_DATABASE_URL" in log_text
+
+        # Secrets must NOT appear in log
+        assert secret_token not in log_text
+        assert "other_secret" not in log_text
+
+
+@pytest.mark.unit
+class TestAsyncApplicationUrlRemainsCorrect:
+    """SQLAlchemy async application engine URL handling remains separate and intact."""
+
+    def test_async_database_url_from_standard_postgresql(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """postgresql:// in Settings converts to postgresql+asyncpg:// for async engine."""
+        from backend.core.config import Settings
+
+        monkeypatch.setenv(
+            "DATABASE_URL", "postgresql://user:pass@host:5432/dbname"
+        )
+        s = Settings()
+        assert s.async_database_url == "postgresql+asyncpg://user:pass@host:5432/dbname"
+
+    def test_async_database_url_from_legacy_postgres(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """postgres:// in Settings converts to postgresql+asyncpg:// for async engine."""
+        from backend.core.config import Settings
+
+        monkeypatch.setenv(
+            "DATABASE_URL", "postgres://user:pass@host:5432/dbname"
+        )
+        s = Settings()
+        assert s.async_database_url == "postgresql+asyncpg://user:pass@host:5432/dbname"
+
+    def test_async_database_url_passthrough(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """postgresql+asyncpg:// remains unchanged."""
+        from backend.core.config import Settings
+
+        monkeypatch.setenv(
+            "DATABASE_URL", "postgresql+asyncpg://user:pass@host:5432/dbname"
+        )
+        s = Settings()
+        assert s.async_database_url == "postgresql+asyncpg://user:pass@host:5432/dbname"
+
 

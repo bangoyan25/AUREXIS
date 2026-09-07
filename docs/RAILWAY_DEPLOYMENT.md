@@ -142,8 +142,17 @@ Migration chain:
   1. `ALEMBIC_DATABASE_URL` — explicit manual override, highest priority.
   2. `DATABASE_URL` — Railway PostgreSQL provides this via `${{Postgres.DATABASE_URL}}`.
   3. Local `.env` file — loaded lazily if present (local dev only; not present in container).
-  4. If no URL found: raises `RuntimeError` clearly explaining that `DATABASE_URL` is required.
+  4. If no URL found: raises `RuntimeError` with message: `No database URL configured for Alembic migrations. Set DATABASE_URL (preferred — Railway provides this automatically from the PostgreSQL plugin via ${{Postgres.DATABASE_URL}}) or ALEMBIC_DATABASE_URL in your environment. Neither variable is currently set.`
   - URL normalization: `postgresql+asyncpg://` stripped to `postgresql://`; `postgres://` normalized to `postgresql://`; `postgresql+aiosqlite://` collapsed to `sqlite:///`.
+- **Alembic driver vs Application async engine**:
+  - Alembic (`migrations/env.py`): uses synchronous `psycopg2` driver — URL scheme must be `postgresql://`.
+  - Application (`backend/db/session.py`): uses async `asyncpg` driver via `settings.async_database_url` — converts `postgresql://` / `postgres://` to `postgresql+asyncpg://` automatically.
+  - These are fully independent URL paths. Do not mix them.
+- **Safe Diagnostics** emitted on every Alembic run (NO credentials, usernames, passwords, or secrets logged):
+  ```
+  INFO [alembic.env] Alembic database URL resolution: ALEMBIC_DATABASE_URL configured=no, DATABASE_URL configured=yes
+  INFO [alembic.env] Alembic database URL selected source: DATABASE_URL
+  ```
 - **Zero Committed Credentials**: No database passwords or host URLs are committed to the repository.
 - Verify via one-off command: `alembic current` -> expect `003_trading_domain (head)`
 - Rollback: `alembic downgrade -1` or `alembic downgrade base` (full `downgrade()` methods exist in all 3 migrations)
