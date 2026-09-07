@@ -231,6 +231,12 @@ Total tests: 355 passed
 - **Lint:** ruff clean.
 - **Frontend:** 65/65 Jest pass, ESLint clean, Next.js 23 pages build clean.
 
+- **Railway Docker Build Fix (2026-09-07):**
+  - Root cause: `pyproject.toml` had non-standard `build-backend = "setuptools.backends.legacy:build"`, causing `BackendUnavailable: Cannot import 'setuptools.backends'` under Railway's Python 3.12 image. In addition, Dockerfile used malformed fallback `pip install --no-cache-dir ".[ " 2>/dev/null || ...`.
+  - Fix: Changed build-backend in `pyproject.toml` to standard `setuptools.build_meta` with `setuptools>=68`.
+  - Dockerfile updated: deterministic `python -m pip install --upgrade pip setuptools wheel && python -m pip install --no-cache-dir .`.
+  - Docker local verification: Docker CLI unavailable on host; Docker build verification delegated to Railway CI/CD builder.
+
 - **Live Trading:** DISABLED. No change to any trading invariant.
 
 

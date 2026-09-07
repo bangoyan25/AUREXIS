@@ -33,7 +33,8 @@ WORKDIR /app
 
 # Install Python dependencies from pyproject.toml (production only — no dev extras)
 COPY pyproject.toml ./
-RUN pip install --no-cache-dir ".[" 2>/dev/null || pip install --no-cache-dir .
+RUN python -m pip install --upgrade pip setuptools wheel \
+ && python -m pip install --no-cache-dir .
 
 # Copy application source
 COPY backend/ ./backend/

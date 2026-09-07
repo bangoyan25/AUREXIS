@@ -58,6 +58,8 @@ AUREXIS LIVE TRADING STATUS: DISABLED
 ### 3.3 Backend Service
 - Provision: Railway Dashboard -> **+ New -> GitHub Repo -> Root Directory: `/`**
 - Builder: Dockerfile (root-level `Dockerfile`, specified in `railway.json`)
+- Build backend: Standard PEP 517 `setuptools.build_meta` (`setuptools>=68`, `wheel`).
+- Install command: `python -m pip install --upgrade pip setuptools wheel && python -m pip install --no-cache-dir .` (production runtime dependencies only).
 - Start command (in `railway.json` and Dockerfile CMD):
   ```bash
   alembic upgrade head && exec uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1 --log-level info

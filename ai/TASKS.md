@@ -31,6 +31,15 @@
   - Full test suite verified.
   - Committed and pushed to `origin/main`.
 
+- [x] TASK-RW07: Stabilize Railway Python Docker build — **DONE 2026-09-07**
+  - Root cause: `pyproject.toml` `build-backend = "setuptools.backends.legacy:build"` is an internal setuptools module path unavailable via PEP 517 bootstrap in Railway's Python 3.12 image → `BackendUnavailable: Cannot import 'setuptools.backends'`.
+  - Root cause 2: Dockerfile `pip install --no-cache-dir ".[ " 2>/dev/null || pip install --no-cache-dir .` — malformed extras specifier, non-deterministic fallback chain silently masks errors.
+  - Fix 1 (`pyproject.toml`): `requires = ["setuptools>=68", "wheel"]` + `build-backend = "setuptools.build_meta"` (stable PEP 517 entry point, compatible with all setuptools ≥40).
+  - Fix 2 (`Dockerfile`): `python -m pip install --upgrade pip setuptools wheel && python -m pip install --no-cache-dir .` — deterministic, no fallback.
+  - All gates pass: 326/326 pytest, mypy 75 files clean, ruff clean, 65/65 Jest, 23 Next.js pages clean.
+  - Docker local verification: Docker CLI NOT AVAILABLE on host — Railway CI/CD builder required for final Docker verification.
+  - Committed `fix: stabilize Railway Python build` and pushed to `origin/main`.
+
 
 
 ## Phase 11 — Runtime Infrastructure Verification & Git Backup
