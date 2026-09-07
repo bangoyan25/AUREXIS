@@ -27,6 +27,7 @@ dependencies = [
     "pydantic>=2.10",
     "pydantic-settings>=2.7",
     "python-dotenv>=1.0",
+    "email-validator>=2.0",  # required by pydantic EmailStr in auth routes
     # Serialization
     "orjson>=3.10",
     # Structured logging
@@ -51,7 +52,6 @@ dev = [
     "factory-boy>=3.3",
     "freezegun>=1.5",
     "aiosqlite>=0.20",      # in-memory SQLite for unit tests
-    "email-validator>=2.0", # required by pydantic EmailStr
 ]
 
 [tool.setuptools.packages.find]
