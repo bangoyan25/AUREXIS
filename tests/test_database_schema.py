@@ -128,3 +128,24 @@ def test_migration_003_covers_all_9_trading_domain_tables() -> None:
     assert "idempotency_key" in migration_003
     assert "raw_broker_response_json" in migration_003
 
+
+def test_alembic_upgrade_head_offline_sql(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify full migration chain to head generates valid SQL without schema errors."""
+    import contextlib
+    import io
+
+    from alembic import command
+    from alembic.config import Config
+
+    monkeypatch.setenv("DATABASE_URL", "postgresql://postgres:testpass@localhost:5432/railway")
+    monkeypatch.delenv("ALEMBIC_DATABASE_URL", raising=False)
+
+    buf = io.StringIO()
+    cfg = Config("alembic.ini")
+    with contextlib.redirect_stdout(buf):
+        command.upgrade(cfg, "head", sql=True)
+
+    sql_output = buf.getvalue()
+    assert "CREATE TABLE execution_commands" in sql_output
+    assert "003_trading_domain" in sql_output
+

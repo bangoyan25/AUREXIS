@@ -70,14 +70,31 @@ def get_database_url() -> str:
 
     alembic_url = os.environ.get("ALEMBIC_DATABASE_URL") or ""
     database_url = os.environ.get("DATABASE_URL") or ""
+    postgres_url = os.environ.get("POSTGRES_URL") or ""
+    database_public_url = os.environ.get("DATABASE_PUBLIC_URL") or ""
+    database_sync_url = os.environ.get("DATABASE_SYNC_URL") or ""
+
+    pghost = os.environ.get("PGHOST") or ""
+    pguser = os.environ.get("PGUSER") or ""
+    pgpassword = os.environ.get("PGPASSWORD") or ""
+    pgport = os.environ.get("PGPORT") or "5432"
+    pgdatabase = os.environ.get("PGDATABASE") or ""
 
     # ── Diagnostics (safe — no credentials logged) ──────────────────────────
     log.info(
         "Alembic database URL resolution: "
         "ALEMBIC_DATABASE_URL configured=%s, "
-        "DATABASE_URL configured=%s",
+        "DATABASE_URL configured=%s, "
+        "POSTGRES_URL configured=%s, "
+        "DATABASE_PUBLIC_URL configured=%s, "
+        "DATABASE_SYNC_URL configured=%s, "
+        "PGHOST configured=%s",
         "yes" if alembic_url else "no",
         "yes" if database_url else "no",
+        "yes" if postgres_url else "no",
+        "yes" if database_public_url else "no",
+        "yes" if database_sync_url else "no",
+        "yes" if pghost else "no",
     )
 
     # ── Precedence ──────────────────────────────────────────────────────────
@@ -87,13 +104,24 @@ def get_database_url() -> str:
     elif database_url:
         raw = database_url
         selected_source = "DATABASE_URL"
+    elif postgres_url:
+        raw = postgres_url
+        selected_source = "POSTGRES_URL"
+    elif database_public_url:
+        raw = database_public_url
+        selected_source = "DATABASE_PUBLIC_URL"
+    elif database_sync_url:
+        raw = database_sync_url
+        selected_source = "DATABASE_SYNC_URL"
+    elif pghost and pguser and pgdatabase:
+        raw = f"postgresql://{pguser}:{pgpassword}@{pghost}:{pgport}/{pgdatabase}"
+        selected_source = "PGHOST/PGUSER/PGDATABASE"
     else:
         raise RuntimeError(
             "No database URL configured for Alembic migrations. "
-            "Set DATABASE_URL (preferred — Railway provides this automatically from "
-            "the PostgreSQL plugin via ${{Postgres.DATABASE_URL}}) "
-            "or ALEMBIC_DATABASE_URL in your environment. "
-            "Neither variable is currently set."
+            "Set DATABASE_URL in Railway backend service Variables "
+            "(reference Railway PostgreSQL: ${{Postgres.DATABASE_URL}} or ${{PostgreSQL.DATABASE_URL}}). "
+            "Neither DATABASE_URL, ALEMBIC_DATABASE_URL, POSTGRES_URL, nor PGHOST is set."
         )
 
     log.info("Alembic database URL selected source: %s", selected_source)

@@ -11,6 +11,7 @@ for None and enter NOT_CONFIGURED state rather than using invented defaults.
 
 from __future__ import annotations
 
+import os
 from decimal import Decimal
 from typing import Literal
 
@@ -148,6 +149,23 @@ class Settings(BaseSettings):
         into postgresql+asyncpg:// scheme required by SQLAlchemy async engine.
         """
         url = self.DATABASE_URL
+        default_url = "postgresql+asyncpg://aurexis:change-me-locally@localhost:5432/aurexis"
+        if url == default_url:
+            alt = (
+                os.environ.get("POSTGRES_URL")
+                or os.environ.get("DATABASE_PUBLIC_URL")
+                or os.environ.get("DATABASE_SYNC_URL")
+            )
+            if not alt:
+                pghost = os.environ.get("PGHOST")
+                pguser = os.environ.get("PGUSER")
+                pgpass = os.environ.get("PGPASSWORD", "")
+                pgdb = os.environ.get("PGDATABASE")
+                pgport = os.environ.get("PGPORT", "5432")
+                if pghost and pguser and pgdb:
+                    alt = f"postgresql://{pguser}:{pgpass}@{pghost}:{pgport}/{pgdb}"
+            if alt:
+                url = alt
         if url.startswith("postgresql://"):
             return "postgresql+asyncpg://" + url[len("postgresql://"):]
         if url.startswith("postgres://"):

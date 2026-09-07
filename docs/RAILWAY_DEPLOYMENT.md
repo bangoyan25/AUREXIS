@@ -86,7 +86,7 @@ AUREXIS LIVE TRADING STATUS: DISABLED
 | `APP_ENV` | Environment mode | `production` |
 | `APP_VERSION` | Application version | `0.1.0` |
 | `LOG_LEVEL` | Logging verbosity | `INFO` |
-| `DATABASE_URL` | PostgreSQL connection | `${{Postgres.DATABASE_URL}}` |
+| `DATABASE_URL` | PostgreSQL connection | `${{Postgres.DATABASE_URL}}` or `${{PostgreSQL.DATABASE_URL}}` |
 | `REDIS_URL` | Redis connection | `${{Redis.REDIS_URL}}` |
 | `JWT_SECRET` | JWT signing secret (32+ random bytes) | `python -c "import secrets; print(secrets.token_hex(32))"` |
 | `JWT_ALGORITHM` | JWT signing algorithm | `HS256` |
