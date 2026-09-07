@@ -226,7 +226,7 @@ Total tests: 355 passed
 - **Documentation Created:**
   - `docs/RAILWAY_DEPLOYMENT.md` — full Railway architecture, env vars, migration procedure, WebSocket URL behavior, health probes, secrets, rollback, local vs Railway matrix.
 
-- **Tests:** 326/326 pytest pass (13 new Railway readiness tests added to `tests/test_config.py`).
+- **Tests:** 338/338 pytest pass (12 new migration regression tests added to `tests/test_migrations_env.py`, 13 Railway readiness tests in `tests/test_config.py`).
 - **Type-check:** mypy clean (75 files).
 - **Lint:** ruff clean.
 - **Frontend:** 65/65 Jest pass, ESLint clean, Next.js 23 pages build clean.
@@ -236,6 +236,16 @@ Total tests: 355 passed
   - Fix: Changed build-backend in `pyproject.toml` to standard `setuptools.build_meta` with `setuptools>=68`.
   - Dockerfile updated: deterministic `python -m pip install --upgrade pip setuptools wheel && python -m pip install --no-cache-dir .`.
   - Docker local verification: Docker CLI unavailable on host; Docker build verification delegated to Railway CI/CD builder.
+
+- **Railway Database URL Migration Fix (2026-09-07):**
+  - Root cause: `migrations/env.py:get_database_url()` raised `RuntimeError: No database URL configured. Set ALEMBIC_DATABASE_URL in your .env file.` when Railway only injected `DATABASE_URL` and no `.env` file existed in the Docker container.
+  - Fix: Updated `migrations/env.py:get_database_url()` to follow clean precedence:
+    1. `ALEMBIC_DATABASE_URL` (explicit override).
+    2. `DATABASE_URL` (Railway standard; stripped of `asyncpg` / `aiosqlite` prefixes; `postgres://` normalized to `postgresql://`).
+    3. `.env` file via lazy `load_dotenv()` for local developer workflows.
+    4. Explicit `RuntimeError` if no URL configured — mentions `DATABASE_URL` as primary variable.
+  - Added 12 unit tests in `tests/test_migrations_env.py` covering precedence, normalization (`postgres://`, `asyncpg`, `aiosqlite`), and error conditions without creating fake/default URLs.
+  - Live trading remains strictly DISABLED. Migration 003 remains required before application startup. No credentials committed.
 
 - **Live Trading:** DISABLED. No change to any trading invariant.
 

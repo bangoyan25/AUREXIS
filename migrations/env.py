@@ -12,6 +12,7 @@ import os
 from logging.config import fileConfig
 
 from alembic import context
+from dotenv import find_dotenv, load_dotenv
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 
@@ -21,15 +22,19 @@ from backend.db.models.account import TradingAccount  # noqa: F401
 from backend.db.models.audit_log import AuditLog  # noqa: F401
 from backend.db.models.mt5_agent import MT5Agent  # noqa: F401
 from backend.db.models.refresh_token import RefreshToken  # noqa: F401
-
-# Individual model imports — add new models here as they are created:
 from backend.db.models.user import User  # noqa: F401
 
 # ── Alembic config ─────────────────────────────────────────────────────────
-config = context.config
-
-if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+# context.config is only populated when Alembic CLI runs this file.
+# When migrations/env.py is imported directly (e.g. in unit tests to test
+# get_database_url()), context.config does not exist — guard the attribute access.
+try:
+    config = context.config
+    if config.config_file_name is not None:
+        fileConfig(config.config_file_name)
+except AttributeError:
+    # Not running under Alembic CLI — skip config/logging setup.
+    config = None  # type: ignore[assignment]
 
 # All models share one Base (single registry) — one metadata object for Alembic.
 target_metadata = Base.metadata
@@ -37,28 +42,44 @@ target_metadata = Base.metadata
 
 def get_database_url() -> str:
     """
-    Resolve the database URL from environment.
-    ALEMBIC_DATABASE_URL takes precedence (uses sync psycopg2 driver for Alembic).
-    Falls back to DATABASE_SYNC_URL, then DATABASE_URL.
-    Alembic requires a synchronous driver — strip 'async' variants.
+    Resolve the database URL for Alembic (synchronous psycopg2 driver).
+
+    Precedence:
+      1. ALEMBIC_DATABASE_URL — explicit override, highest priority.
+      2. DATABASE_URL         — Railway PostgreSQL plugin provides this automatically.
+      3. RuntimeError         — no usable URL found; fail clearly.
+
+    Normalization applied:
+      - postgresql+asyncpg://  →  postgresql://   (strip asyncpg prefix)
+      - postgresql+aiosqlite:// →  sqlite:///      (test/in-memory SQLite)
+      - postgres://            →  postgresql://    (Railway/Heroku legacy scheme)
     """
-    url = (
+    # Load .env if present — does NOT overwrite variables already in the environment.
+    # Priority is therefore: real env vars (Railway / Docker / shell) > .env > defaults.
+    # In Railway production the .env file is absent and all variables come from os.environ.
+    # In local development the .env file populates variables not already set in the shell.
+    load_dotenv(find_dotenv(usecwd=True), override=False)
+
+    raw = (
         os.environ.get("ALEMBIC_DATABASE_URL")
-        or os.environ.get("DATABASE_SYNC_URL")
         or os.environ.get("DATABASE_URL")
     )
-    if not url:
+    if not raw:
         raise RuntimeError(
-            "No database URL configured. "
-            "Set ALEMBIC_DATABASE_URL in your .env file."
+            "No database URL configured for Alembic migrations. "
+            "Set DATABASE_URL (preferred — Railway provides this automatically from "
+            "the PostgreSQL plugin) or ALEMBIC_DATABASE_URL in your environment."
         )
-    # Normalize: replace async driver prefix if present
+    url = raw
+    # Strip asyncpg prefix — Alembic uses psycopg2 sync driver
     url = url.replace("postgresql+asyncpg://", "postgresql://")
-    # Normalize: replace legacy postgres:// scheme (Railway / Heroku style)
+    # Strip aiosqlite prefix — collapse to plain sqlite:// for in-memory tests
+    url = url.replace("postgresql+aiosqlite://", "sqlite:///")
+    # Normalize legacy postgres:// scheme (Railway / Heroku)
     if url.startswith("postgres://"):
         url = "postgresql://" + url[len("postgres://"):]
-    url = url.replace("postgresql+aiosqlite://", "sqlite:///")
     return url
+
 
 
 def run_migrations_offline() -> None:
@@ -103,7 +124,10 @@ def run_migrations_online() -> None:
     asyncio.run(run_async_migrations())
 
 
-if context.is_offline_mode():
-    run_migrations_offline()
-else:
-    run_migrations_online()
+# Only execute migrations when invoked by the Alembic CLI runner (config is present).
+# Prevents execution when env.py is imported in unit tests or diagnostic scripts.
+if config is not None:
+    if context.is_offline_mode():
+        run_migrations_offline()
+    else:
+        run_migrations_online()

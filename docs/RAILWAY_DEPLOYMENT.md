@@ -45,9 +45,10 @@ AUREXIS LIVE TRADING STATUS: DISABLED
 
 ### 3.1 PostgreSQL Service
 - Provision: Railway Dashboard -> **+ New -> Database -> Add PostgreSQL**
-- Railway injects: `DATABASE_URL` (`postgresql://postgres:<password>@<host>:<port>/railway`)
-- AUREXIS converts `postgresql://` and legacy `postgres://` to `postgresql+asyncpg://` automatically in `settings.async_database_url`.
-- Alembic uses psycopg2 sync driver, normalized in `migrations/env.py`.
+- Railway injects: `DATABASE_URL` (`postgresql://postgres:<password>@<host>:<port>/railway`) into any service in the same project that references `${{Postgres.DATABASE_URL}}`.
+- AUREXIS application engine converts `postgresql://` and legacy `postgres://` to `postgresql+asyncpg://` automatically via `settings.async_database_url`.
+- Alembic (`migrations/env.py`) uses `DATABASE_URL` directly for psycopg2 sync driver. `ALEMBIC_DATABASE_URL` is an optional explicit override — not required when `DATABASE_URL` is correctly linked.
+- No separate `ALEMBIC_DATABASE_URL` or `DATABASE_SYNC_URL` variable needed in Railway.
 
 ### 3.2 Redis Service
 - Provision: Railway Dashboard -> **+ New -> Database -> Add Redis**
@@ -133,8 +134,17 @@ Migration chain:
 001_initial -> 002_refresh_tokens -> 003_trading_domain (head)
 ```
 
-- Runs automatically on container start: `alembic upgrade head`
-- If migration fails, container exits (no traffic routed to un-migrated DB)
+- **Startup Sequence**: Runs automatically on container start: `alembic upgrade head && exec uvicorn ...`
+  - Container runs migrations BEFORE starting the server process.
+  - If migration fails, the container exits immediately — Uvicorn never starts, and Railway does not route traffic.
+  - Migration 003 (`003_trading_domain`) remains strictly required before application startup.
+- **Database URL Resolution Precedence (`migrations/env.py:get_database_url()`)**:
+  1. `ALEMBIC_DATABASE_URL` — explicit manual override, highest priority.
+  2. `DATABASE_URL` — Railway PostgreSQL provides this via `${{Postgres.DATABASE_URL}}`.
+  3. Local `.env` file — loaded lazily if present (local dev only; not present in container).
+  4. If no URL found: raises `RuntimeError` clearly explaining that `DATABASE_URL` is required.
+  - URL normalization: `postgresql+asyncpg://` stripped to `postgresql://`; `postgres://` normalized to `postgresql://`; `postgresql+aiosqlite://` collapsed to `sqlite:///`.
+- **Zero Committed Credentials**: No database passwords or host URLs are committed to the repository.
 - Verify via one-off command: `alembic current` -> expect `003_trading_domain (head)`
 - Rollback: `alembic downgrade -1` or `alembic downgrade base` (full `downgrade()` methods exist in all 3 migrations)
 

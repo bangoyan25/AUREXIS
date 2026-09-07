@@ -31,7 +31,31 @@
   - Full test suite verified.
   - Committed and pushed to `origin/main`.
 
+- [x] TASK-RW08: Fix Railway database URL resolution for Alembic — **DONE 2026-09-07**
+  - Root cause: `migrations/env.py:get_database_url()` raised `RuntimeError: No database URL configured. Set ALEMBIC_DATABASE_URL in your .env file.` in Railway because:
+    1. Railway injects `DATABASE_URL` as a real environment variable — not read by pydantic-settings into `os.environ`.
+    2. Without `load_dotenv()`, local `.env` values never reached `os.environ` used by `get_database_url()`.
+    3. Error message misled users to believe only `ALEMBIC_DATABASE_URL` was supported.
+  - Fix: Rewrote `get_database_url()` with clean precedence:
+    1. `ALEMBIC_DATABASE_URL` (explicit override).
+    2. `DATABASE_URL` (Railway provides via `${{Postgres.DATABASE_URL}}` automatically).
+    3. Lazy `load_dotenv(override=False)` for local `.env` fallback.
+    4. `RuntimeError` with clear message if no URL is available.
+  - Model imports and `context.config` access in `migrations/env.py` guarded so file can be imported directly in unit tests (Alembic `context.config` only exists under Alembic CLI runner).
+  - Regression tests: 12 new tests in `tests/test_migrations_env.py` covering precedence, all normalization cases, and error conditions.
+  - All gates: 338/338 pytest, mypy 75 files clean, ruff clean, 65/65 Jest, 23 Next.js pages clean.
+  - No credentials committed. Migration 003 required before startup. Live trading DISABLED.
+
 - [x] TASK-RW07: Stabilize Railway Python Docker build — **DONE 2026-09-07**
+  - Root cause: `pyproject.toml` `build-backend = "setuptools.backends.legacy:build"` is an internal setuptools module path unavailable via PEP 517 bootstrap in Railway's Python 3.12 image → `BackendUnavailable: Cannot import 'setuptools.backends'`.
+  - Root cause 2: Dockerfile `pip install --no-cache-dir ".[ " 2>/dev/null || pip install --no-cache-dir .` — malformed extras specifier, non-deterministic fallback chain silently masks errors.
+  - Fix 1 (`pyproject.toml`): `requires = ["setuptools>=68", "wheel"]` + `build-backend = "setuptools.build_meta"` (stable PEP 517 entry point, compatible with all setuptools ≥40).
+  - Fix 2 (`Dockerfile`): `python -m pip install --upgrade pip setuptools wheel && python -m pip install --no-cache-dir .` — deterministic, no fallback.
+  - All gates pass: 326/326 pytest, mypy 75 files clean, ruff clean, 65/65 Jest, 23 Next.js pages clean.
+  - Docker local verification: Docker CLI NOT AVAILABLE on host — Railway CI/CD builder required for final Docker verification.
+  - Committed `fix: stabilize Railway Python build` and pushed to `origin/main`.
+
+
   - Root cause: `pyproject.toml` `build-backend = "setuptools.backends.legacy:build"` is an internal setuptools module path unavailable via PEP 517 bootstrap in Railway's Python 3.12 image → `BackendUnavailable: Cannot import 'setuptools.backends'`.
   - Root cause 2: Dockerfile `pip install --no-cache-dir ".[ " 2>/dev/null || pip install --no-cache-dir .` — malformed extras specifier, non-deterministic fallback chain silently masks errors.
   - Fix 1 (`pyproject.toml`): `requires = ["setuptools>=68", "wheel"]` + `build-backend = "setuptools.build_meta"` (stable PEP 517 entry point, compatible with all setuptools ≥40).
