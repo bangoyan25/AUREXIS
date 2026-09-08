@@ -85,3 +85,13 @@ def test_pydantic_email_validator_direct_import_and_execution() -> None:
     validated = adapter.validate_python("user@example.com")
     assert validated == "user@example.com"
 
+
+def test_vps_setup_script_exists_and_references_canonical_install() -> None:
+    """Verify scripts/vps_setup.sh exists and installs pip install -e '.[dev]'."""
+    script_path = Path(__file__).resolve().parent.parent / "scripts" / "vps_setup.sh"
+    assert script_path.exists(), f"scripts/vps_setup.sh not found at {script_path}"
+    content = script_path.read_text(encoding="utf-8")
+    assert 'pip install --quiet -e ".[dev]"' in content or "pip install -e '.[dev]'" in content
+    assert "dotenv" in content
+    assert "alembic" in content
+
