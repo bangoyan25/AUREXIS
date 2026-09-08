@@ -15,7 +15,7 @@ import os
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Railway injects PORT as the assigned listener port for each service.
@@ -122,6 +122,29 @@ class Settings(BaseSettings):
         description="Railway backend URL for frontend (alias for NEXT_PUBLIC_API_URL)",
     )
     NEXT_PUBLIC_WS_URL: str = "ws://localhost:8000"
+
+    @field_validator(
+        "PORT",
+        "MARKET_DATA_PROVIDER",
+        "MARKET_DATA_STALENESS_THRESHOLD_SECONDS",
+        "NEWS_PROVIDER",
+        "NEWS_PRE_EVENT_WINDOW_MINUTES",
+        "NEWS_POST_EVENT_WINDOW_MINUTES",
+        "FX_RATE_PROVIDER",
+        "RISK_DAILY_LOSS_LIMIT_USD",
+        "RISK_MAX_DRAWDOWN_USD",
+        "RISK_PROFIT_LOCK_FORMULA",
+        "RISK_MAX_OPEN_POSITIONS",
+        "RISK_DEFAULT_POSITION_SIZE_LOTS",
+        "NEXT_PUBLIC_API_BASE_URL",
+        mode="before",
+    )
+    @classmethod
+    def _empty_str_to_none(cls, v: object) -> object:
+        """Coerce blank or whitespace-only environment strings to None."""
+        if isinstance(v, str) and v.strip() == "":
+            return None
+        return v
 
     # ── Derived properties ─────────────────────────────────────────────────
     @property

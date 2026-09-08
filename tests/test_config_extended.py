@@ -115,3 +115,55 @@ class TestProductionLogging:
         structlog.reset_defaults()
         from backend.core.logging import configure_logging
         configure_logging("WARNING", force_json=True)  # Must not raise
+
+
+@pytest.mark.unit
+class TestBlankOptionalConfigCoercion:
+    """Blank or whitespace-only optional environment variables must coerce to None."""
+
+    def test_blank_risk_variables_remain_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("RISK_DAILY_LOSS_LIMIT_USD", "")
+        monkeypatch.setenv("RISK_MAX_DRAWDOWN_USD", "   ")
+        monkeypatch.setenv("RISK_MAX_OPEN_POSITIONS", "")
+        monkeypatch.setenv("RISK_DEFAULT_POSITION_SIZE_LOTS", "")
+        monkeypatch.setenv("RISK_PROFIT_LOCK_FORMULA", "")
+        cfg = Settings()
+        assert cfg.RISK_DAILY_LOSS_LIMIT_USD is None
+        assert cfg.RISK_MAX_DRAWDOWN_USD is None
+        assert cfg.RISK_MAX_OPEN_POSITIONS is None
+        assert cfg.RISK_DEFAULT_POSITION_SIZE_LOTS is None
+        assert cfg.RISK_PROFIT_LOCK_FORMULA is None
+
+    def test_blank_market_and_news_variables_remain_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("MARKET_DATA_STALENESS_THRESHOLD_SECONDS", "")
+        monkeypatch.setenv("NEWS_PRE_EVENT_WINDOW_MINUTES", "  ")
+        monkeypatch.setenv("NEWS_POST_EVENT_WINDOW_MINUTES", "")
+        monkeypatch.setenv("MARKET_DATA_PROVIDER", "")
+        monkeypatch.setenv("NEWS_PROVIDER", "")
+        monkeypatch.setenv("FX_RATE_PROVIDER", "")
+        cfg = Settings()
+        assert cfg.MARKET_DATA_STALENESS_THRESHOLD_SECONDS is None
+        assert cfg.NEWS_PRE_EVENT_WINDOW_MINUTES is None
+        assert cfg.NEWS_POST_EVENT_WINDOW_MINUTES is None
+        assert cfg.MARKET_DATA_PROVIDER is None
+        assert cfg.NEWS_PROVIDER is None
+        assert cfg.FX_RATE_PROVIDER is None
+
+    def test_blank_port_coerces_to_none_and_effective_port_falls_back(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("PORT", "")
+        cfg = Settings()
+        assert cfg.PORT is None
+        assert cfg.effective_port == cfg.BACKEND_PORT
+
+    def test_valid_numeric_values_still_parse_correctly(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("RISK_DAILY_LOSS_LIMIT_USD", "100.50")
+        monkeypatch.setenv("RISK_MAX_OPEN_POSITIONS", "5")
+        monkeypatch.setenv("MARKET_DATA_STALENESS_THRESHOLD_SECONDS", "30")
+        cfg = Settings()
+        assert Decimal("100.50") == cfg.RISK_DAILY_LOSS_LIMIT_USD
+        assert cfg.RISK_MAX_OPEN_POSITIONS == 5
+        assert cfg.MARKET_DATA_STALENESS_THRESHOLD_SECONDS == 30
