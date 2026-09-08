@@ -66,7 +66,11 @@ def get_database_url() -> str:
     # Priority is therefore: real env vars (Railway / Docker / shell) > .env > defaults.
     # In Railway production the .env file is absent and all variables come from os.environ.
     # In local development the .env file populates variables not already set in the shell.
-    load_dotenv(find_dotenv(usecwd=True), override=False)
+    #
+    # AUREXIS_SKIP_DOTENV=1 suppresses .env loading.  Set only in test fixtures that need
+    # full os.environ isolation (tests/test_migrations_env.py).  Never set in production.
+    if os.environ.get("AUREXIS_SKIP_DOTENV") != "1":
+        load_dotenv(find_dotenv(usecwd=True), override=False)
 
     alembic_url = os.environ.get("ALEMBIC_DATABASE_URL") or ""
     database_url = os.environ.get("DATABASE_URL") or ""

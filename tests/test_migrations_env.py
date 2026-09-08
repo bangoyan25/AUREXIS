@@ -34,10 +34,31 @@ def _get_database_url() -> str:
 
 @pytest.fixture(autouse=True)
 def _clean_db_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Remove all database URL variables from os.environ for each test."""
-    monkeypatch.delenv("ALEMBIC_DATABASE_URL", raising=False)
-    monkeypatch.delenv("DATABASE_URL", raising=False)
-    monkeypatch.delenv("DATABASE_SYNC_URL", raising=False)
+    """Isolate os.environ for every migration URL test.
+
+    1. Set AUREXIS_SKIP_DOTENV=1 so get_database_url() does not re-inject
+       values from the repository .env file (which exists on the VPS with real
+       production credentials).
+    2. Remove every env var that get_database_url() uses as a URL source so
+       that each test starts from a clean slate.
+    """
+    # Prevent load_dotenv() inside get_database_url() from reading .env
+    monkeypatch.setenv("AUREXIS_SKIP_DOTENV", "1")
+
+    # Clear all URL-bearing variables
+    for var in (
+        "ALEMBIC_DATABASE_URL",
+        "DATABASE_URL",
+        "DATABASE_SYNC_URL",
+        "POSTGRES_URL",
+        "DATABASE_PUBLIC_URL",
+        "PGHOST",
+        "PGUSER",
+        "PGPASSWORD",
+        "PGPORT",
+        "PGDATABASE",
+    ):
+        monkeypatch.delenv(var, raising=False)
 
 
 @pytest.mark.unit
@@ -247,4 +268,42 @@ class TestAsyncApplicationUrlRemainsCorrect:
         s = Settings()
         assert s.async_database_url == "postgresql+asyncpg://user:pass@host:5432/dbname"
 
+
+
+
+@pytest.mark.unit
+class TestAlembicEnvDotenvIsolation:
+    """Verify that AUREXIS_SKIP_DOTENV isolates test environments from repo .env."""
+
+    def test_skip_dotenv_prevents_reloading_from_disk(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: pytest.TempPathFactory
+    ) -> None:
+        """When AUREXIS_SKIP_DOTENV=1, load_dotenv is bypassed entirely."""
+        from unittest.mock import patch
+
+        monkeypatch.setenv("DATABASE_URL", "postgresql://user:pass@host:5432/testdb")
+        with patch("migrations.env.load_dotenv") as mock_load:
+            url = _get_database_url()
+
+        assert url == "postgresql://user:pass@host:5432/testdb"
+        mock_load.assert_not_called()
+
+    def test_dotenv_loaded_when_skip_flag_not_set(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """When AUREXIS_SKIP_DOTENV is unset, load_dotenv is invoked as in production CLI."""
+        import importlib
+        from unittest.mock import patch
+
+        monkeypatch.delenv("AUREXIS_SKIP_DOTENV", raising=False)
+        monkeypatch.setenv("DATABASE_URL", "postgresql://user:pass@host:5432/testdb")
+
+        # Reload the module fresh so load_dotenv binding is current in its namespace
+        import migrations.env as menv
+        importlib.reload(menv)
+
+        with patch.object(menv, "load_dotenv") as mock_load:
+            menv.get_database_url()
+
+        mock_load.assert_called_once()
 
