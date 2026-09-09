@@ -8,7 +8,7 @@ Type=simple
 User=ubuntu
 Group=ubuntu
 WorkingDirectory=/home/ubuntu/AUREXIS/frontend
-ExecStart=/usr/local/bin/npm start
+ExecStart=/home/ubuntu/AUREXIS/frontend/node_modules/.bin/next start -H 127.0.0.1 -p 3000
 Restart=on-failure
 RestartSec=5
 StandardOutput=journal
@@ -17,10 +17,12 @@ SyslogIdentifier=aurexis-frontend
 
 # Environment — production API
 Environment="NODE_ENV=production"
+Environment="PORT=3000"
+Environment="HOSTNAME=127.0.0.1"
 Environment="NEXT_PUBLIC_API_BASE_URL=https://app.aurexis.web.id"
+Environment="NEXT_PUBLIC_API_URL=https://app.aurexis.web.id"
 Environment="NEXT_PUBLIC_WS_URL=wss://app.aurexis.web.id"
 Environment="NEXT_PUBLIC_TRADING_MODE=SIMULATION"
-Environment="PORT=3000"
 
 # Process limits
 LimitNOFILE=65535
