@@ -21,6 +21,7 @@ from sqlalchemy.engine import Connection
 from backend.db.base import Base  # noqa: F401
 from backend.db.models.account import TradingAccount  # noqa: F401
 from backend.db.models.audit_log import AuditLog  # noqa: F401
+from backend.db.models.agent_command import MT5AgentCommand  # noqa: F401
 from backend.db.models.mt5_agent import MT5Agent  # noqa: F401
 from backend.db.models.refresh_token import RefreshToken  # noqa: F401
 from backend.db.models.user import User  # noqa: F401

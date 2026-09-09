@@ -2,13 +2,14 @@
 Tests for Database Schema & ORM Model Integrity.
 
 Verifies:
-1. All 14 tables registered in Base.metadata (5 initial/core + 9 trading domain).
+1. All 15 tables registered in Base.metadata (5 initial/core + 9 trading domain + 1 agent command).
 2. Numeric columns have precision=18, scale=8.
 3. Timestamp columns are timezone-aware.
 4. Primary keys use UUID.
 5. Foreign keys have correct ondelete policies.
-6. Alembic migrations 001, 002, 003 parse without syntax errors.
+6. Alembic migrations 001, 002, 003, 004 parse without syntax errors.
 7. Migration 003 has all 9 tables and critical columns matching ORM.
+8. Migration 004 has mt5_agent_commands matching ORM.
 """
 
 from __future__ import annotations
@@ -20,7 +21,7 @@ import pytest
 from sqlalchemy import Numeric
 from sqlalchemy.dialects.postgresql import UUID
 
-import backend.db.models  # noqa: F401 – registers all models
+import backend.db.models  # noqa: F401 ? registers all models
 from backend.db.base import Base
 
 EXPECTED_TABLES = {
@@ -29,10 +30,11 @@ EXPECTED_TABLES = {
     "risk_configurations", "risk_decisions", "candidate_signals",
     "execution_commands", "execution_reports", "positions",
     "equity_snapshots", "daily_session_states", "news_events",
+    "mt5_agent_commands",
 }
 
 
-def test_all_14_tables_registered() -> None:
+def test_all_tables_registered() -> None:
     registered = set(Base.metadata.tables.keys())
     missing = EXPECTED_TABLES - registered
     assert not missing, f"Missing from Base.metadata: {missing}"
@@ -70,10 +72,13 @@ def test_all_datetime_columns_timezone_aware() -> None:
                 assert col.type.timezone is True, (
                     f"{tbl}.{col.name}: DateTime must be timezone=True"
                 )
+
+
 def test_foreign_key_ondelete_policies() -> None:
     expected_rules = {
         ("trading_accounts", "users"): "CASCADE",
         ("mt5_agents", "trading_accounts"): "CASCADE",
+        ("mt5_agent_commands", "mt5_agents"): "CASCADE",
         ("refresh_tokens", "users"): "CASCADE",
         ("risk_configurations", "trading_accounts"): "CASCADE",
         ("equity_snapshots", "trading_accounts"): "CASCADE",
@@ -129,6 +134,17 @@ def test_migration_003_covers_all_9_trading_domain_tables() -> None:
     assert "raw_broker_response_json" in migration_003
 
 
+def test_migration_004_covers_mt5_agent_commands() -> None:
+    migration_004 = Path("migrations/versions/004_mt5_agent_commands.py").read_text(encoding="utf-8")
+    assert '"mt5_agent_commands"' in migration_004
+    assert "command_type" in migration_004
+    assert "payload_json" in migration_004
+    assert "result_json" in migration_004
+    assert "sent_at" in migration_004
+    assert "acknowledged_at" in migration_004
+    assert "completed_at" in migration_004
+
+
 def test_alembic_upgrade_head_offline_sql(monkeypatch: pytest.MonkeyPatch) -> None:
     """Verify full migration chain to head generates valid SQL without schema errors."""
     import contextlib
@@ -148,4 +164,5 @@ def test_alembic_upgrade_head_offline_sql(monkeypatch: pytest.MonkeyPatch) -> No
     sql_output = buf.getvalue()
     assert "CREATE TABLE execution_commands" in sql_output
     assert "003_trading_domain" in sql_output
-
+    assert "CREATE TABLE mt5_agent_commands" in sql_output
+    assert "004_mt5_agent_commands" in sql_output

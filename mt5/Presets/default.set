@@ -1,0 +1,7 @@
+InpBackendHost=app.aurexis.web.id
+InpBackendPort=443
+InpAgentId=
+InpAgentSecret=
+InpHeartbeatSec=15
+InpReconnectSec=5
+InpSymbolMap=XAUUSD=XAUUSD

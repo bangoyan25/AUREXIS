@@ -5,6 +5,7 @@ so that Base.metadata.create_all() creates all tables correctly.
 """
 
 from backend.db.models.account import TradingAccount  # noqa: F401
+from backend.db.models.agent_command import MT5AgentCommand  # noqa: F401
 from backend.db.models.audit_log import AuditLog  # noqa: F401
 from backend.db.models.equity import DailySessionState, EquitySnapshot  # noqa: F401
 from backend.db.models.execution import ExecutionCommand, ExecutionReport, Position  # noqa: F401

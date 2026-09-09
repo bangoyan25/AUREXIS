@@ -7,6 +7,8 @@
 *.cer
 *.pfx
 *.p12
+*.tmp
+*.secret
 secrets/
 credentials/
 
@@ -44,3 +46,18 @@ data/*
 *.egg-info/
 build/
 
+# MetaTrader 5
+mt5/**/*.log
+mt5/**/*.ex5
+mt5/Presets/*.set
+!mt5/Presets/default.set
+*.tst
+*.htm
+
+
+
+# Local secrets and VPS credentials
+vps_creds.txt
+*.creds.txt
+frontend/.env.local
+frontend/.env*.local

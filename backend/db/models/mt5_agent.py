@@ -22,6 +22,7 @@ from backend.db.base import Base, TimestampMixin
 
 if TYPE_CHECKING:
     from backend.db.models.account import TradingAccount
+    from backend.db.models.agent_command import MT5AgentCommand
 
 
 class MT5Agent(TimestampMixin, Base):
@@ -44,14 +45,14 @@ class MT5Agent(TimestampMixin, Base):
     label: Mapped[str] = mapped_column(String(100), nullable=False)
 
     # Authentication: each agent has a unique shared secret (HMAC)
-    # Stored as bcrypt hash — never plaintext
+    # Stored as bcrypt hash ? never plaintext
     hashed_secret: Mapped[str] = mapped_column(String(255), nullable=False)
 
-    # Connection state — PostgreSQL is authoritative.
+    # Connection state ? PostgreSQL is authoritative.
     # Redis may cache live state for fast reads.
     # After a Redis restart, read last_known_status from here and treat
     # UNKNOWN as DISCONNECTED until the agent sends a fresh heartbeat.
-    # Safe default: unknown connection state → no execution allowed.
+    # Safe default: unknown connection state ? no execution allowed.
     last_seen_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -73,6 +74,9 @@ class MT5Agent(TimestampMixin, Base):
     # Relationships
     account: Mapped[TradingAccount] = relationship(
         "TradingAccount", back_populates="mt5_agents"
+    )
+    commands: Mapped[list[MT5AgentCommand]] = relationship(
+        "MT5AgentCommand", back_populates="agent", cascade="all, delete-orphan"
     )
 
     def __repr__(self) -> str:

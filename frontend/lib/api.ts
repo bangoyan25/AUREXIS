@@ -91,6 +91,19 @@ export interface AuditEventResponse {
   correlation_id: string | null;
   occurred_at: string;
 }
+export interface CommandResponse {
+  id: string;
+  agent_id: string;
+  command_type: string;
+  status: string;
+  payload: Record<string, unknown> | null;
+  result: Record<string, unknown> | null;
+  error_message: string | null;
+  created_at: string;
+  sent_at: string | null;
+  acknowledged_at: string | null;
+  completed_at: string | null;
+}
 
 // ── Stub / domain response types ──────────────────────────────────────────────
 
@@ -232,6 +245,21 @@ export const agentsApi = {
     apiFetch<AgentResponse[]>("/api/v1/agents", { token }),
   get: (id: string, token: string) =>
     apiFetch<AgentResponse>(`/api/v1/agents/${id}`, { token }),
+};
+
+// ── Agent Commands ─────────────────────────────────────────────────────────────
+
+export const commandsApi = {
+  list: (agentId: string, token: string) =>
+    apiFetch<CommandResponse[]>(`/api/v1/agents/${agentId}/commands`, { token }),
+  get: (agentId: string, commandId: string, token: string) =>
+    apiFetch<CommandResponse>(`/api/v1/agents/${agentId}/commands/${commandId}`, { token }),
+  create: (agentId: string, body: { command_type: string; payload?: Record<string, unknown> }, token: string) =>
+    apiFetch<CommandResponse>(`/api/v1/agents/${agentId}/commands`, {
+      method: "POST",
+      body: JSON.stringify(body),
+      token,
+    }),
 };
 
 // ── Activity ──────────────────────────────────────────────────────────────────
