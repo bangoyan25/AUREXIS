@@ -488,8 +488,8 @@ void OnTimer()
             Print("[AUREXIS] Sent heartbeat to backend.");
          }
 
-         // Send initial market tick if none sent yet
-         if(g_is_welcomed && g_last_tick_send_time == 0)
+         // Send market tick on every timer cycle to keep backend market data fresh
+         if(g_is_welcomed)
          {
             SendMarketTick(true);
          }
