@@ -89,6 +89,10 @@ export interface AgentResponse {
   notes: string | null;
   created_at: string;
 }
+export interface RegisterAgentResponse extends AgentResponse {
+  // Returned exactly once at registration. Never exposed again.
+  agent_secret: string;
+}
 export interface AuditEventResponse {
   id: string;
   event_type: string;
@@ -251,6 +255,12 @@ export const agentsApi = {
     apiFetch<AgentResponse[]>("/api/v1/agents", { token }),
   get: (id: string, token: string) =>
     apiFetch<AgentResponse>(`/api/v1/agents/${id}`, { token }),
+  register: (body: { account_id: string; label: string; notes?: string | null }, token: string) =>
+    apiFetch<RegisterAgentResponse>("/api/v1/agents", {
+      method: "POST",
+      body: JSON.stringify(body),
+      token,
+    }),
 };
 
 // ── Agent Commands ─────────────────────────────────────────────────────────────

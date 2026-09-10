@@ -1,17 +1,39 @@
 "use client";
-/** Accounts page — real API. */
+/** Accounts page — real API with Create Account form. */
+import { useState } from "react";
 import { Panel, StatRow, Badge } from "@/components/ui/primitives";
 import { useAccounts } from "@/lib/hooks/useAccounts";
+import { CreateAccountForm } from "./CreateAccountForm";
 
 export function AccountsPage() {
-  const { accounts, loading, error } = useAccounts();
+  const { accounts, loading, error, createAccount, refetch } = useAccounts();
+  const [showCreate, setShowCreate] = useState(false);
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-xs font-medium uppercase tracking-widest text-aurexis-subtle">Accounts</h1>
-        <p className="text-2xs text-aurexis-faint mt-0.5">Trading account management. Credentials never stored client-side.</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-xs font-medium uppercase tracking-widest text-aurexis-subtle">Accounts</h1>
+          <p className="text-2xs text-aurexis-faint mt-0.5">Trading account management. Credentials never stored client-side.</p>
+        </div>
+        <button
+          onClick={() => setShowCreate((v) => !v)}
+          className="px-3 py-1.5 bg-aurexis-accent hover:bg-aurexis-accent/80 text-black text-2xs font-mono uppercase tracking-wider rounded transition-colors"
+        >
+          {showCreate ? "Cancel" : "+ Add Account"}
+        </button>
       </div>
+
+      {showCreate && (
+        <CreateAccountForm
+          createAccount={createAccount}
+          onCreated={() => {
+            setShowCreate(false);
+            void refetch();
+          }}
+          onCancel={() => setShowCreate(false)}
+        />
+      )}
 
       <Panel title="Registered Accounts">
         {loading ? (
@@ -25,6 +47,7 @@ export function AccountsPage() {
         ) : accounts.length === 0 ? (
           <div className="px-4 py-8 text-center">
             <p className="text-xs text-aurexis-subtle">No registered accounts.</p>
+            <p className="text-2xs text-aurexis-faint mt-1">Click &ldquo;+ Add Account&rdquo; above to register your first MT5 trading account.</p>
           </div>
         ) : (
           <div className="divide-y divide-aurexis-border/40">
@@ -43,7 +66,9 @@ export function AccountsPage() {
                   </div>
                 </div>
                 <div className="mt-2 pt-2 border-t border-aurexis-border/50">
+                  <StatRow label="Account ID"     value={<span className="font-mono text-2xs text-aurexis-subtle">{acc.id}</span>} />
                   <StatRow label="Account No."    value={<span className="font-mono text-aurexis-faint">{acc.mt5_account_number}</span>} />
+                  {acc.mt5_server && <StatRow label="Server"         value={<span className="font-mono text-aurexis-faint">{acc.mt5_server}</span>} />}
                   <StatRow label="Normalization"  value={`×${acc.cent_normalization_factor}`} />
                   <StatRow label="Trading"        value={acc.trading_enabled ? <Badge variant="success">ENABLED</Badge> : <Badge variant="warning">DISABLED</Badge>} />
                   <StatRow label="Created"        value={new Date(acc.created_at).toLocaleDateString()} />
@@ -59,5 +84,4 @@ export function AccountsPage() {
       </div>
     </div>
   );
-}
-
+}

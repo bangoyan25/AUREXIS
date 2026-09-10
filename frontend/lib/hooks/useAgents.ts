@@ -1,9 +1,9 @@
 "use client";
 /**
- * useAgents — GET /api/v1/agents. Auth required.
+ * useAgents — GET /api/v1/agents + register. Auth required.
  */
 import { useState, useEffect, useCallback } from "react";
-import { agentsApi, type AgentResponse } from "@/lib/api";
+import { agentsApi, type AgentResponse, type RegisterAgentResponse } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 
 export function useAgents() {
@@ -34,5 +34,16 @@ export function useAgents() {
 
   useEffect(() => { void fetchAgents(); }, [fetchAgents]);
 
-  return { data, agents: data, loading, error, refetch: fetchAgents };
+  const registerAgent = useCallback(
+    async (body: { account_id: string; label: string; notes?: string | null }): Promise<RegisterAgentResponse> => {
+      if (!token) throw new Error("Unauthenticated");
+      const result = await agentsApi.register(body, token);
+      await fetchAgents();
+      return result;
+    },
+    [token, fetchAgents],
+  );
+
+  return { data, agents: data, loading, error, refetch: fetchAgents, registerAgent };
 }
+
