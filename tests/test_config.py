@@ -137,8 +137,9 @@ class TestRailwayReadiness:
         cfg = Settings(DATABASE_URL="postgres://user:pass@host:5432/db")
         assert cfg.async_database_url == "postgresql+asyncpg://user:pass@host:5432/db"
 
-    def test_cors_origins_empty_by_default(self) -> None:
-        cfg = Settings()
+    def test_cors_origins_empty_by_default(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv("CORS_ORIGINS", raising=False)
+        cfg = Settings(_env_file=None)
         assert cfg.CORS_ORIGINS == ""
 
     def test_allowed_cors_origins_includes_localhost_in_dev(self, monkeypatch: pytest.MonkeyPatch) -> None:
