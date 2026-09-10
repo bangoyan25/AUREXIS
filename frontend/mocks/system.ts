@@ -3,10 +3,12 @@ import type { SystemHealth, TradingAccount, MT5Agent, AuditEvent } from "@/types
 
 export const IS_MOCK = true;
 
+// Development fixture only. AUREXIS is broker-agnostic: this is a generic
+// Cent-denominated demo account, not tied to any specific broker brand.
 export const MOCK_ACCOUNT: TradingAccount = {
   id: "mock-account-001",
-  label: "HFM Cent Demo",
-  broker: "HFM",
+  label: "Demo Cent Account",
+  broker: "Demo Broker",
   mt5_account_number: "XXXXXXXX",
   broker_currency: "USC",
   is_cent_account: true,

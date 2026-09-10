@@ -21,13 +21,16 @@ input string InpAgentId       = "";                    // Agent ID (UUID)
 input string InpAgentSecret   = "";                    // Agent Secret Token
 input uint   InpHeartbeatSec  = 15;                    // Heartbeat Interval (sec)
 input uint   InpReconnectSec  = 5;                     // Reconnect Interval (sec)
-input string InpSymbolMap     = "XAUUSD=XAUUSD";       // Broker Symbol Map
+input string InpSymbolMap       = "XAUUSD=XAUUSD";       // Broker Symbol Map
+input uint   InpTickThrottleMs   = 100;                   // Min Tick Throttle (ms)
 
 //--- Globals
 CAurexisWebSocket g_ws;
 bool              g_hello_sent = false;
 bool              g_is_welcomed = false;
 uint              g_last_heartbeat = 0;
+MqlTick           g_last_tick;
+uint              g_last_tick_send_time = 0;
 
 //+------------------------------------------------------------------+
 //| Process incoming server command                                  |
@@ -129,6 +132,53 @@ void OnWsMessage(const string msg)
 }
 
 //+------------------------------------------------------------------+
+//| Stream real-time market tick                                     |
+//+------------------------------------------------------------------+
+void SendMarketTick(bool force = false)
+{
+   if(!g_ws.IsConnected() || !g_is_welcomed)
+      return;
+
+   uint now_tick = GetTickCount();
+   if(!force && (now_tick - g_last_tick_send_time < InpTickThrottleMs))
+      return;
+
+   MqlTick current_tick;
+   if(!SymbolInfoTick(_Symbol, current_tick))
+      return;
+
+   // Check if price or time changed (unless force)
+   if(!force &&
+      current_tick.bid == g_last_tick.bid &&
+      current_tick.ask == g_last_tick.ask &&
+      current_tick.time == g_last_tick.time)
+   {
+      return;
+   }
+
+   double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
+   int digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
+   double spread = current_tick.ask - current_tick.bid;
+
+   string msg = CAurexisProtocol::FormatMarketData(
+      _Symbol,
+      current_tick.bid,
+      current_tick.ask,
+      spread,
+      point,
+      digits,
+      current_tick.time,
+      current_tick.volume
+   );
+
+   if(g_ws.SendText(msg))
+   {
+      g_last_tick = current_tick;
+      g_last_tick_send_time = now_tick;
+   }
+}
+
+//+------------------------------------------------------------------+
 //| Expert initialization function                                   |
 //+------------------------------------------------------------------+
 int OnInit()
@@ -200,12 +250,20 @@ void OnTimer()
             g_last_heartbeat = GetTickCount();
             Print("[AUREXIS] Sent heartbeat to backend.");
          }
+
+         // Send initial market tick if none sent yet
+         if(g_is_welcomed && g_last_tick_send_time == 0)
+         {
+            SendMarketTick(true);
+         }
       }
    }
    else
    {
       g_hello_sent = false;
       g_is_welcomed = false;
+      g_last_tick_send_time = 0;
+      ZeroMemory(g_last_tick);
    }
 }
 
@@ -215,5 +273,6 @@ void OnTimer()
 void OnTick()
 {
    g_ws.Tick();
+   SendMarketTick(false);
 }
 //+------------------------------------------------------------------+

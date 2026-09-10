@@ -90,7 +90,16 @@ def _brain_status() -> dict[str, object]:
 
 
 def _mt5_status() -> dict[str, object]:
-    """MT5 agents — no agents registered yet."""
+    """MT5 agents connection status."""
+    from backend.ws.agent_manager import agent_manager
+
+    count = agent_manager.connection_count
+    if count > 0:
+        return {
+            "status": "healthy",
+            "connected_agents": count,
+            "note": f"{count} MT5 EA agent(s) connected.",
+        }
     return {
         "status": "NO_AGENTS",
         "connected_agents": 0,

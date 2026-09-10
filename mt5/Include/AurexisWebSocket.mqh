@@ -61,10 +61,7 @@ private:
    bool SendHttpUpgrade()
    {
       m_sec_ws_key = GenerateSecKey();
-      string req = "GET " + m_path;
-      if(m_token != "")
-         req += "?token=" + m_token;
-      req += " HTTP/1.1\r\n";
+      string req = "GET " + m_path + " HTTP/1.1\r\n";
       req += "Host: " + m_host + "\r\n";
       req += "Upgrade: websocket\r\n";
       req += "Connection: Upgrade\r\n";

@@ -52,14 +52,14 @@ export function CreateAccountForm({ onCreated, onCancel, createAccount }: Create
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
             <label className="block text-2xs font-mono text-aurexis-subtle mb-1">Label *</label>
-            <input type="text" required placeholder="e.g. HFM Demo Main" value={label}
+            <input type="text" required placeholder="e.g. Primary MT5 Live" value={label}
               onChange={(e) => setLabel(e.target.value)}
               className="w-full bg-aurexis-elevated border border-aurexis-border rounded px-2.5 py-1.5 text-xs text-aurexis-text font-mono focus:outline-none focus:border-aurexis-accent"
               maxLength={100} />
           </div>
           <div>
             <label className="block text-2xs font-mono text-aurexis-subtle mb-1">Broker Name *</label>
-            <input type="text" required placeholder="e.g. HFM" value={broker}
+            <input type="text" required placeholder="e.g. Generic Broker / MetaQuotes" value={broker}
               onChange={(e) => setBroker(e.target.value)}
               className="w-full bg-aurexis-elevated border border-aurexis-border rounded px-2.5 py-1.5 text-xs text-aurexis-text font-mono focus:outline-none focus:border-aurexis-accent"
               maxLength={100} />
@@ -73,7 +73,7 @@ export function CreateAccountForm({ onCreated, onCancel, createAccount }: Create
           </div>
           <div>
             <label className="block text-2xs font-mono text-aurexis-subtle mb-1">MT5 Server</label>
-            <input type="text" placeholder="e.g. HFMarkets-Demo" value={server}
+            <input type="text" placeholder="e.g. Broker-Live / MetaQuotes-Demo" value={server}
               onChange={(e) => setServer(e.target.value)}
               className="w-full bg-aurexis-elevated border border-aurexis-border rounded px-2.5 py-1.5 text-xs text-aurexis-text font-mono focus:outline-none focus:border-aurexis-accent"
               maxLength={200} />

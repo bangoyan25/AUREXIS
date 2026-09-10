@@ -45,7 +45,7 @@ const SETTINGS: Array<{ group: string; items: SettingRow[] }> = [
   {
     group: "Execution",
     items: [
-      { key: "commission",      label: "Commission (HFM Cent)", status: "UNDEFINED" },
+      { key: "commission",      label: "Commission (Cent/Standard)", status: "UNDEFINED" },
       { key: "swap_rate",       label: "Swap Rate",             status: "UNDEFINED" },
       { key: "slippage",        label: "Slippage Model",        status: "UNDEFINED" },
     ],

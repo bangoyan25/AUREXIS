@@ -20,11 +20,12 @@ Server → Agent messages:
 
 from __future__ import annotations
 
+import math
 import uuid
-from typing import Any, Literal
+from decimal import Decimal, InvalidOperation
+from typing import Any, Literal, Self
 
-from pydantic import BaseModel, Field, field_validator
-
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 # ---------------------------------------------------------------------------
 # Agent → Server
@@ -100,6 +101,67 @@ class ResultMessage(BaseModel):
         return upper
 
 
+class MarketDataMessage(BaseModel):
+    """Real-time market tick from MT5 execution agent."""
+
+    type: Literal["market_data"]
+    symbol: str = Field(min_length=1, max_length=20)
+    bid: Decimal
+    ask: Decimal
+    spread: Decimal
+    point: Decimal = Field(default=Decimal("0.01"))
+    digits: int = Field(default=2, ge=0, le=8)
+    tick_time: str = Field(min_length=1, max_length=50)
+    tick_volume: int | float | None = Field(default=0)
+    timestamp: str | None = Field(default=None, max_length=50)
+
+    @field_validator("symbol")
+    @classmethod
+    def clean_symbol(cls, v: str) -> str:
+        s = v.strip().upper()
+        if not s:
+            raise ValueError("symbol cannot be empty")
+        return s
+
+    @field_validator("bid", "ask", "spread", "point", mode="before")
+    @classmethod
+    def parse_and_validate_decimal(cls, v: Any, info: Any) -> Decimal:
+        if v is None:
+            raise ValueError(f"{info.field_name} cannot be None")
+        if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+            raise ValueError(f"{info.field_name} cannot be NaN or Infinite")
+        try:
+            d = Decimal(str(v))
+        except (InvalidOperation, TypeError, ValueError) as exc:
+            raise ValueError(f"{info.field_name} must be a valid numeric value") from exc
+
+        if d.is_nan() or d.is_infinite():
+            raise ValueError(f"{info.field_name} cannot be NaN or Infinite")
+
+        if info.field_name in ("bid", "ask") and d <= Decimal("0"):
+            raise ValueError(f"{info.field_name} must be greater than 0")
+        if info.field_name in ("spread", "point") and d < Decimal("0"):
+            raise ValueError(f"{info.field_name} cannot be negative")
+        return d
+
+    @field_validator("tick_volume", mode="before")
+    @classmethod
+    def validate_tick_volume(cls, v: Any) -> int | float | None:
+        if v is None:
+            return 0
+        if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+            raise ValueError("tick_volume cannot be NaN or Infinite")
+        if isinstance(v, (int, float)) and v < 0:
+            raise ValueError("tick_volume cannot be negative")
+        return v
+
+    @model_validator(mode="after")
+    def validate_bid_ask(self) -> Self:
+        if self.ask < self.bid:
+            raise ValueError(f"ask ({self.ask}) cannot be less than bid ({self.bid})")
+        return self
+
+
 # ---------------------------------------------------------------------------
 # Server → Agent
 # ---------------------------------------------------------------------------
@@ -149,12 +211,12 @@ class ErrorMessage(BaseModel):
 # Discriminated union helpers
 # ---------------------------------------------------------------------------
 
-ALLOWED_AGENT_MESSAGE_TYPES = frozenset({"hello", "heartbeat", "ack", "result"})
+ALLOWED_AGENT_MESSAGE_TYPES = frozenset({"hello", "heartbeat", "ack", "result", "market_data"})
 
 
 def parse_agent_message(
     data: dict[str, Any],
-) -> HelloMessage | HeartbeatMessage | AckMessage | ResultMessage:
+) -> HelloMessage | HeartbeatMessage | AckMessage | ResultMessage | MarketDataMessage:
     """
     Parse and validate an incoming agent message dict.
 
@@ -174,5 +236,6 @@ def parse_agent_message(
         return HeartbeatMessage(**data)
     if msg_type == "ack":
         return AckMessage(**data)
-    # result
-    return ResultMessage(**data)
+    if msg_type == "result":
+        return ResultMessage(**data)
+    return MarketDataMessage(**data)

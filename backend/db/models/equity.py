@@ -15,7 +15,7 @@ from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, Un
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from backend.db.base import Base, ImmutableTimestampMixin, TimestampMixin
+from backend.db.base import Base, ImmutableTimestampMixin
 
 
 class EquitySnapshot(ImmutableTimestampMixin, Base):
@@ -45,7 +45,7 @@ class EquitySnapshot(ImmutableTimestampMixin, Base):
     account = relationship("TradingAccount")
 
 
-class DailySessionState(TimestampMixin, Base):
+class DailySessionState(ImmutableTimestampMixin, Base):
     """Per-account per-date state for daily loss limits and profit-lock threshold tracking."""
     __tablename__ = "daily_session_states"
     __table_args__ = (

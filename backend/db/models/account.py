@@ -57,7 +57,10 @@ class TradingAccount(TimestampMixin, Base):
     # Currency / cent normalization
     # broker_currency: the currency as reported by the broker (e.g. "USD", "Cent")
     broker_currency: Mapped[str] = mapped_column(String(20), nullable=False, default="USD")
-    # is_cent_account: true for HFM Cent accounts
+    # is_cent_account: true for Cent-denominated accounts (any broker).
+    # This is a characteristic of the ACCOUNT DENOMINATION, not of any broker brand.
+    # AUREXIS is broker-agnostic: never branch on broker name — branch on this flag
+    # plus cent_normalization_factor.
     is_cent_account: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     # cent_normalization_factor: multiply broker units by this to get USD
     # For normal USD accounts: 1.0

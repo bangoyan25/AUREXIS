@@ -257,6 +257,21 @@ async def create_command(
             detail={"code": "COMMAND_ERROR", "message": str(exc)},
         ) from exc
 
+    await db.commit()
+
+    from backend.ws.agent_manager import agent_manager
+    if agent_manager.is_connected(str(agent.id)):
+        in_flight = await svc.has_in_flight_command(db, agent.id)
+        if not in_flight:
+            import asyncio
+            from backend.api.v1.agent_ws import _deliver_pending_commands, _get_session_factory
+
+            asyncio.create_task(
+                _deliver_pending_commands(
+                    agent.id, uuid.UUID(user_id), agent.account_id, _get_session_factory()
+                )
+            )
+
     return _command_to_response(cmd)
 
 

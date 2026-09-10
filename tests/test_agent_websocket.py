@@ -812,3 +812,69 @@ class TestAgentWsSecurity:
             assert resp["type"] == "error"
             assert resp["code"] == "PROTOCOL_ERROR"
 
+
+
+@pytest.mark.unit
+class TestPhase3MarketDataStreaming:
+    """Phase 3: Verify MT5 agent market_data streaming over WebSocket."""
+
+    def test_market_data_ingested_via_ws(self, app_env):
+        c, sf, _ = app_env
+        token = _register_and_login(c, USER_A)
+        acc_id = _create_account(c, token)
+        agent_id, secret = _register_agent(c, token, acc_id)
+
+        from backend.services import market_data_service
+        market_data_service.clear_local_cache()
+
+        with c.websocket_connect(_ws_url(agent_id), headers={"Authorization": f"Bearer {secret}"}) as ws:
+            ws.send_json({
+                "type": "market_data",
+                "symbol": "XAUUSD",
+                "bid": 2650.50,
+                "ask": 2650.75,
+                "spread": 0.25,
+                "point": 0.01,
+                "digits": 2,
+                "tick_time": "2026-09-10 12:00:00",
+                "tick_volume": 12,
+            })
+
+            # Also send heartbeat to verify channel continuity
+            ws.send_json({"type": "heartbeat", "status": "CONNECTED"})
+            resp = ws.receive_json()
+            assert resp["type"] == "heartbeat_ack"
+
+        # Verify tick was ingested into server-side market state
+        from decimal import Decimal
+        cached = market_data_service._in_memory_account_ticks.get(str(acc_id), {}).get("XAUUSD")
+        assert cached is not None
+        assert Decimal(cached["bid"]) == Decimal("2650.50")
+        assert Decimal(cached["ask"]) == Decimal("2650.75")
+        assert cached["symbol"] == "XAUUSD"
+
+    def test_malformed_market_data_rejected_safely(self, app_env):
+        c, sf, _ = app_env
+        token = _register_and_login(c, USER_A)
+        acc_id = _create_account(c, token)
+        agent_id, secret = _register_agent(c, token, acc_id)
+
+        with c.websocket_connect(_ws_url(agent_id), headers={"Authorization": f"Bearer {secret}"}) as ws:
+            # Send invalid tick (ask < bid)
+            ws.send_json({
+                "type": "market_data",
+                "symbol": "XAUUSD",
+                "bid": 2650.50,
+                "ask": 2640.00,
+                "spread": 0.25,
+                "tick_time": "2026-09-10 12:00:00",
+            })
+            resp = ws.receive_json()
+            assert resp["type"] == "error"
+            assert resp["code"] == "PROTOCOL_ERROR"
+
+            # Verify connection is still intact by sending valid heartbeat
+            ws.send_json({"type": "heartbeat", "status": "CONNECTED"})
+            hb_ack = ws.receive_json()
+            assert hb_ack["type"] == "heartbeat_ack"
+

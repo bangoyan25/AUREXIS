@@ -9,7 +9,18 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from backend.api.v1 import accounts, activity, agent_commands, agent_ws, agents, auth, health, stubs, websocket
+from backend.api.v1 import (
+    accounts,
+    activity,
+    agent_commands,
+    agent_ws,
+    agents,
+    auth,
+    health,
+    market_data_routes,
+    stubs,
+    websocket,
+)
 
 router = APIRouter(prefix="/api/v1")
 
@@ -36,6 +47,10 @@ router.include_router(activity.router, prefix="")
 
 # MT5 Agent WebSocket transport
 router.include_router(agent_ws.router, prefix="")
+
+
+# Market data & Risk gate observability
+router.include_router(market_data_routes.router, prefix="")
 
 
 # Domain stubs ? NOT_CONFIGURED/EMPTY boundaries for unimplemented domains

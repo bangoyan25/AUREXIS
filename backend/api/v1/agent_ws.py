@@ -20,9 +20,9 @@ If delivery fails, status is safely preserved as PENDING for retry or polling fa
 
 from __future__ import annotations
 
+import asyncio
 import json
 import uuid
-import asyncio
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
@@ -35,6 +35,7 @@ from backend.db.models.agent_command import MT5AgentCommand
 from backend.db.models.mt5_agent import MT5Agent
 from backend.db.session import AsyncSessionLocal
 from backend.services import agent_commands as cmd_svc
+from backend.services import market_data_service
 from backend.services.audit import AuditEventType, record_audit_event
 from backend.services.auth import verify_password
 from backend.ws.agent_manager import agent_manager
@@ -43,6 +44,7 @@ from backend.ws.agent_protocol import (
     HeartbeatAckMessage,
     HeartbeatMessage,
     HelloMessage,
+    MarketDataMessage,
     ResultMessage,
     WelcomeMessage,
     parse_agent_message,
@@ -252,6 +254,14 @@ async def agent_websocket_endpoint(
                             curr.ea_version = msg.ea_version
                     await db.commit()
                 await websocket.send_json(HeartbeatAckMessage().model_dump())
+
+            elif isinstance(msg, MarketDataMessage):
+                # Ingest market data strictly bound to authenticated agent & account identity
+                await market_data_service.record_market_data(
+                    agent_id=agent_uuid,
+                    account_id=agent.account_id,
+                    msg=msg,
+                )
 
             elif isinstance(msg, AckMessage):
                 cmd_id = uuid.UUID(msg.command_id)

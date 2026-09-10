@@ -194,6 +194,18 @@ async def claim_pending_commands(
 
     return commands
 
+async def has_in_flight_command(db: AsyncSession, agent_id: uuid.UUID) -> bool:
+    """Return True if agent currently has an active command (SENT or ACKNOWLEDGED)."""
+    result = await db.execute(
+        select(MT5AgentCommand.id).where(
+            MT5AgentCommand.agent_id == agent_id,
+            MT5AgentCommand.status.in_(("SENT", "ACKNOWLEDGED")),
+        ).limit(1)
+    )
+    return result.scalar_one_or_none() is not None
+
+
+
 
 async def acknowledge_command(
     db: AsyncSession,

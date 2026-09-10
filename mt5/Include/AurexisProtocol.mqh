@@ -48,6 +48,32 @@ public:
       return root.Serialize();
    }
 
+   static string FormatMarketData(
+      string symbol,
+      double bid,
+      double ask,
+      double spread,
+      double point,
+      int digits,
+      datetime tick_time,
+      long tick_volume
+   )
+   {
+      CJsonValue root;
+      root.SetType(JSON_OBJECT);
+      root.SetString("type", "market_data");
+      root.SetString("symbol", symbol);
+      root.SetNumber("bid", bid);
+      root.SetNumber("ask", ask);
+      root.SetNumber("spread", spread);
+      root.SetNumber("point", point);
+      root.SetNumber("digits", (double)digits);
+      root.SetString("tick_time", TimeToString(tick_time, TIME_DATE | TIME_SECONDS));
+      root.SetNumber("tick_volume", (double)tick_volume);
+      root.SetString("timestamp", TimeToString(TimeCurrent(), TIME_DATE | TIME_SECONDS));
+      return root.Serialize();
+   }
+
    static string FormatAck(string command_id)
    {
       CJsonValue root;
