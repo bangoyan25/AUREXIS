@@ -285,18 +285,23 @@ async def agent_websocket_endpoint(
                 async with session_factory() as db:
                     try:
                         if msg.status == "COMPLETED":
-                            await cmd_svc.complete_command(
+                            cmd = await cmd_svc.complete_command(
                                 db, agent_uuid, cmd_id,
                                 result=msg.result,
                                 user_id=account_user_id,
                                 account_id=agent.account_id,
                             )
                         else:
-                            await cmd_svc.fail_command(
+                            cmd = await cmd_svc.fail_command(
                                 db, agent_uuid, cmd_id,
                                 error_message=msg.error_message,
                                 user_id=account_user_id,
                                 account_id=agent.account_id,
+                            )
+                        if agent.account_id:
+                            from backend.services.execution_service import record_agent_execution_result
+                            await record_agent_execution_result(
+                                db, agent.account_id, cmd, msg.result, msg.error_message
                             )
                         await db.commit()
                     except cmd_svc.CommandError as exc:

@@ -273,3 +273,133 @@ class ExecutionService:
             await session.commit()
 
         return result
+
+
+
+
+async def record_agent_execution_result(
+    session: AsyncSession,
+    account_id: uuid.UUID,
+    command: Any,
+    result: dict[str, Any] | None,
+    error_message: str | None = None,
+) -> None:
+    """
+    Persist execution outcomes and synchronize Position records.
+    Invoked when MT5 EA returns a ResultMessage for OPEN_POSITION or CLOSE_POSITION.
+    """
+    cmd_type = getattr(command, "command_type", "")
+    if cmd_type not in {"OPEN_POSITION", "CLOSE_POSITION"}:
+        return
+
+    is_completed = (getattr(command, "status", "") == "COMPLETED")
+    res_dict = result or {}
+
+    broker_ticket = res_dict.get("position_ticket") or res_dict.get("order_ticket")
+    if broker_ticket is not None:
+        try:
+            broker_ticket = int(broker_ticket)
+        except (ValueError, TypeError):
+            broker_ticket = None
+
+    deal_ticket = res_dict.get("deal_ticket")
+    if deal_ticket is not None:
+        try:
+            deal_ticket = int(deal_ticket)
+        except (ValueError, TypeError):
+            deal_ticket = None
+
+    fill_price = None
+    if res_dict.get("executed_price") is not None:
+        try:
+            fill_price = Decimal(str(res_dict["executed_price"]))
+        except Exception:
+            fill_price = None
+
+    fill_volume = None
+    if res_dict.get("executed_volume") is not None:
+        try:
+            fill_volume = Decimal(str(res_dict["executed_volume"]))
+        except Exception:
+            fill_volume = None
+
+    retcode = res_dict.get("retcode")
+    if retcode is not None:
+        try:
+            retcode = int(retcode)
+        except (ValueError, TypeError):
+            retcode = None
+
+    # 1. Create DbExecutionReport
+    db_report = DbExecutionReport(
+        id=uuid.uuid4(),
+        account_id=account_id,
+        command_id=None,
+        status="FILLED" if is_completed else "FAILED",
+        broker_ticket=broker_ticket,
+        fill_price=fill_price,
+        fill_volume_lots=fill_volume,
+        commission_usd=Decimal("0.00"),
+        swap_usd=Decimal("0.00"),
+        broker_deal_id=deal_ticket,
+        broker_error_code=retcode,
+        broker_error_message=error_message or res_dict.get("retcode_description"),
+        raw_broker_response_json=json.dumps(res_dict, default=str),
+        executed_at=datetime.now(UTC),
+    )
+    session.add(db_report)
+
+    # 2. Synchronize DbPosition
+    if is_completed and cmd_type == "OPEN_POSITION" and broker_ticket:
+        existing_stmt = select(DbPosition).where(
+            DbPosition.account_id == account_id,
+            DbPosition.broker_ticket == broker_ticket,
+        )
+        res = await session.execute(existing_stmt)
+        pos = res.scalar_one_or_none()
+        if pos is None:
+            side = res_dict.get("side", "BUY")
+            pos = DbPosition(
+                id=uuid.uuid4(),
+                account_id=account_id,
+                command_id=None,
+                broker_ticket=broker_ticket,
+                symbol=res_dict.get("symbol", "XAUUSD"),
+                side=side,
+                lots=fill_volume or Decimal("0.01"),
+                open_price=fill_price or Decimal("0.00"),
+                stop_loss=None,
+                take_profit=None,
+                current_price=fill_price,
+                unrealized_pnl_usd=Decimal("0.00"),
+                commission_usd=Decimal("0.00"),
+                swap_usd=Decimal("0.00"),
+                status="OPEN",
+                opened_at=datetime.now(UTC),
+            )
+            session.add(pos)
+
+    elif is_completed and cmd_type == "CLOSE_POSITION":
+        target_ticket = broker_ticket
+        if not target_ticket and getattr(command, "payload_json", None):
+            try:
+                payload_data = json.loads(command.payload_json)
+                target_ticket = payload_data.get("position_ticket")
+            except Exception:
+                target_ticket = None
+
+        if target_ticket:
+            pos_stmt = select(DbPosition).where(
+                DbPosition.account_id == account_id,
+                DbPosition.broker_ticket == int(target_ticket),
+                DbPosition.status == "OPEN",
+            )
+            res = await session.execute(pos_stmt)
+            pos = res.scalar_one_or_none()
+            if pos:
+                pos.status = "CLOSED"
+                pos.closed_at = datetime.now(UTC)
+                if fill_price:
+                    pos.close_price = fill_price
+
+        return result

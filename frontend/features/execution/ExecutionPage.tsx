@@ -5,6 +5,7 @@ import { Panel, EmptyState, Badge } from "@/components/ui/primitives";
 import { CommandStateBadge } from "@/components/ui/badges";
 import { useExecution } from "@/lib/hooks/useExecution";
 import { useWebSocket } from "@/lib/websocket-context";
+import { DemoExecutionControl } from "./DemoExecutionControl";
 
 const LIFECYCLE = [
   "SIGNAL", "RISK", "COMMAND", "MT5", "BROKER", "RESULT", "RECONCILIATION"
@@ -78,6 +79,9 @@ export function ExecutionPage() {
           <p className="text-2xs text-aurexis-faint">{backendNote}</p>
         </div>
       )}
+
+      {/* Phase 4A MVP: Controlled Demo Execution */}
+      <DemoExecutionControl />
 
       <Panel title="Command History">
         {status !== "OK" ? null : commands.length === 0 ? (

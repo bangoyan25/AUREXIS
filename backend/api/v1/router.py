@@ -16,6 +16,7 @@ from backend.api.v1 import (
     agent_ws,
     agents,
     auth,
+    execution_routes,
     health,
     market_data_routes,
     stubs,
@@ -41,6 +42,9 @@ router.include_router(agents.router, prefix="")
 
 # MT5 Agent commands / control-plane
 router.include_router(agent_commands.router, prefix="")
+
+# Controlled execution pipeline (Phase 4A)
+router.include_router(execution_routes.router, prefix="")
 
 # Audit / Activity log
 router.include_router(activity.router, prefix="")

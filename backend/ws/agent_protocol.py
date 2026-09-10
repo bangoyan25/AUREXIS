@@ -173,7 +173,9 @@ class WelcomeMessage(BaseModel):
     type: Literal["welcome"] = "welcome"
     server_version: str = "1.0"
     # Authoritative command allowlist — do not trust agent-reported capabilities
-    allowed_commands: list[str] = Field(default_factory=lambda: ["PING", "GET_STATUS"])
+    allowed_commands: list[str] = Field(
+        default_factory=lambda: ["PING", "GET_STATUS", "OPEN_POSITION", "CLOSE_POSITION"]
+    )
     message: str = "AUREXIS agent channel established"
 
 

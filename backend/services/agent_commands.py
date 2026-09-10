@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 
 logger = get_logger("service.agent_commands")
 
-SUPPORTED_COMMAND_TYPES = frozenset({"PING", "GET_STATUS"})
+SUPPORTED_COMMAND_TYPES = frozenset({"PING", "GET_STATUS", "OPEN_POSITION", "CLOSE_POSITION"})
 
 VALID_TRANSITIONS: dict[str, set[str]] = {
     "PENDING": {"SENT", "FAILED", "EXPIRED"},

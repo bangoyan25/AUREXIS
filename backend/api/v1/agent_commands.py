@@ -45,7 +45,7 @@ if TYPE_CHECKING:
 router = APIRouter(tags=["agent-commands"])
 _agent_bearer = HTTPBearer(auto_error=False)
 
-ALLOWED_COMMAND_TYPES = frozenset({"PING", "GET_STATUS"})
+ALLOWED_COMMAND_TYPES = frozenset({"PING", "GET_STATUS", "OPEN_POSITION", "CLOSE_POSITION"})
 MAX_PAYLOAD_SIZE = 4096  # bytes JSON-serialised
 
 

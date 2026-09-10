@@ -357,3 +357,63 @@ export const backtestApi = {
     apiFetch<BacktestResponse>("/api/v1/backtest", { token }),
 };
 
+export interface TestExecutionPayload {
+  action: "OPEN_POSITION" | "CLOSE_POSITION";
+  symbol?: string;
+  side?: "BUY" | "SELL";
+  volume?: string | number;
+  position_ticket?: number | null;
+  client_order_id: string;
+  deviation?: number;
+  comment?: string;
+}
+
+export interface TestExecutionResult {
+  command_id: string;
+  account_id: string;
+  agent_id: string;
+  client_order_id: string;
+  action: string;
+  symbol: string;
+  side: string | null;
+  volume: string;
+  status: string;
+  risk_decision: string;
+  risk_reason_code: string;
+  broker_result: Record<string, unknown> | null;
+  error_message: string | null;
+  created_at: string;
+  completed_at: string | null;
+}
+
+export const demoExecutionApi = {
+  execute: (accountId: string, body: TestExecutionPayload, token: string) =>
+    apiFetch<TestExecutionResult>(`/api/v1/accounts/${accountId}/execution/test`, {
+      method: "POST",
+      body: JSON.stringify(body),
+      token,
+    }),
+  getStatus: (accountId: string, commandId: string, token: string) =>
+    apiFetch<TestExecutionResult>(`/api/v1/accounts/${accountId}/execution/test/${commandId}`, { token }),
+  getPositions: (accountId: string, token: string) =>
+    apiFetch<{
+      account_id: string;
+      total_positions: number;
+      open_positions: number;
+      status: string;
+      positions: Array<{
+        id: string;
+        broker_ticket: number;
+        symbol: string;
+        side: string;
+        lots: string;
+        open_price: string;
+        close_price: string | null;
+        status: string;
+        opened_at: string | null;
+        closed_at: string | null;
+      }>;
+    }>(`/api/v1/accounts/${accountId}/positions`, { token }),
+};
+
+

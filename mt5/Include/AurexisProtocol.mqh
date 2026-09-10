@@ -32,6 +32,8 @@ public:
       caps.SetType(JSON_ARRAY);
       CJsonValue *cap1 = new CJsonValue(); cap1.SetString("PING"); caps.Add(cap1);
       CJsonValue *cap2 = new CJsonValue(); cap2.SetString("GET_STATUS"); caps.Add(cap2);
+      CJsonValue *cap3 = new CJsonValue(); cap3.SetString("OPEN_POSITION"); caps.Add(cap3);
+      CJsonValue *cap4 = new CJsonValue(); cap4.SetString("CLOSE_POSITION"); caps.Add(cap4);
       root.Set("capabilities", caps);
 
       return root.Serialize();
