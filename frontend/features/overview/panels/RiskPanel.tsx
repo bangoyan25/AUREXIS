@@ -1,12 +1,15 @@
 "use client";
 import { Panel, Label, StatRow, NotConfigured, Badge } from "@/components/ui/primitives";
 import { RiskStateBadge } from "@/components/ui/badges";
+import { RiskDecisionBadge, ReasonCodeBadge } from "@/components/ui/phase3";
 import { useRisk } from "@/lib/hooks/useRisk";
+import { useRiskDecision } from "@/lib/hooks/useRiskDecision";
 import { useSelectedAccount } from "@/lib/account-context";
 
 export function RiskPanel() {
   const { selectedAccountId } = useSelectedAccount();
   const risk = useRisk(selectedAccountId);
+  const liveDecision = useRiskDecision(selectedAccountId);
 
   if (!selectedAccountId) {
     return (
@@ -22,7 +25,7 @@ export function RiskPanel() {
     );
   }
 
-  if (risk.status === "LOADING") {
+  if (risk.status === "LOADING" && liveDecision.status === "LOADING") {
     return (
       <Panel>
         <div className="px-4 py-3 border-b border-aurexis-border flex items-center justify-between">
@@ -52,25 +55,60 @@ export function RiskPanel() {
 
   const r = risk.data;
   const isNotConfigured = r.risk_state === "NOT_CONFIGURED";
+  const dec = liveDecision.status === "OK" ? liveDecision.data : null;
 
   return (
     <Panel>
-      {/* Header row — state is primary signal */}
+      {/* 1. Account Risk State (State Machine: NORMAL / CAUTION / DEFENSIVE / etc.) */}
       <div className="px-4 py-3 border-b border-aurexis-border flex items-center justify-between">
         <Label>Risk State</Label>
         <RiskStateBadge state={r.risk_state as Parameters<typeof RiskStateBadge>[0]["state"]} />
       </div>
 
-      {/* Trading authorization — second most important */}
+      {/* 2. Authoritative Server-Side Risk Gate Decision (ALLOW / BLOCK from /api/v1/risk/{id}/decision) */}
       <div className="px-4 py-2.5 border-b border-aurexis-border/60 flex items-center justify-between">
-        <Label>Trading</Label>
+        <Label>Risk Gate Decision</Label>
+        {liveDecision.status === "LOADING" ? (
+          <Badge variant="muted">LOADING...</Badge>
+        ) : liveDecision.status === "ERROR" ? (
+          <Badge variant="danger">ERROR</Badge>
+        ) : dec ? (
+          <div className="flex items-center gap-1.5">
+            <RiskDecisionBadge decision={dec.decision} />
+            <ReasonCodeBadge code={dec.reason_code} decision={dec.decision} />
+          </div>
+        ) : (
+          <Badge variant="muted">NO DECISION</Badge>
+        )}
+      </div>
+
+      {/* Server Risk Gate Reason message when evaluated */}
+      {dec && (
+        <div className="px-4 py-2 border-b border-aurexis-border/40 bg-aurexis-elevated/30">
+          <div className="flex items-center justify-between text-2xs font-mono text-aurexis-faint">
+            <span className="truncate mr-2">{dec.reason}</span>
+            <span className="text-2xs text-aurexis-subtle shrink-0">{dec.symbol}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Risk Gate API Error banner if fetch failed */}
+      {liveDecision.status === "ERROR" && (
+        <div className="px-4 py-2 border-b border-aurexis-border/40 bg-aurexis-danger/10">
+          <p className="text-2xs font-mono text-aurexis-danger">{liveDecision.error}</p>
+        </div>
+      )}
+
+      {/* 3. Trading Authorization (Account Policy: AUTHORIZED / BLOCKED) */}
+      <div className="px-4 py-2.5 border-b border-aurexis-border/60 flex items-center justify-between">
+        <Label>Trading Authorization</Label>
         {r.trading_allowed
           ? <Badge variant="success">AUTHORIZED</Badge>
           : <Badge variant="danger">BLOCKED</Badge>
         }
       </div>
 
-      {/* Blocking reason */}
+      {/* Account Risk State Blocking Reason */}
       {r.block_reason && !r.trading_allowed && (
         <div className="px-4 py-2 border-b border-aurexis-border/40 bg-aurexis-danger/5">
           <p className="text-2xs font-mono text-aurexis-danger uppercase tracking-wide">{r.block_reason}</p>
@@ -92,5 +130,6 @@ export function RiskPanel() {
     </Panel>
   );
 }
+
 
 

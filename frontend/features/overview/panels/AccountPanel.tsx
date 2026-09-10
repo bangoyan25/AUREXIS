@@ -41,10 +41,15 @@ export function AccountPanel() {
     <Panel title="Account">
       <div className="px-4 py-3">
         <StatRow label="Label" value={a.label} />
-        <StatRow label="Broker" value={a.broker} />
-        <StatRow label="Account" value={<span className="font-mono text-aurexis-faint text-2xs">{a.mt5_account_number}</span>} />
+        <StatRow label="Broker" value={a.broker || <Badge variant="muted">UNSPECIFIED</Badge>} />
+        <StatRow label="MT5 Server" value={
+          a.mt5_server
+            ? <span className="font-mono text-aurexis-faint text-2xs">{a.mt5_server}</span>
+            : <Badge variant="muted">UNSPECIFIED</Badge>
+        } />
+        <StatRow label="Account Number" value={<span className="font-mono text-aurexis-faint text-2xs">{a.mt5_account_number}</span>} />
         <StatRow label="Currency" value={a.broker_currency} />
-        <StatRow label="Type" value={a.is_cent_account ? "Cent account" : "Standard"} />
+        <StatRow label="Account Type" value={a.is_cent_account ? "Cent account" : "Standard"} />
         <StatRow label="Status" value={
           a.is_active
             ? <Badge variant="success">ACTIVE</Badge>

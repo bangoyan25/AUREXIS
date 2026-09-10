@@ -161,6 +161,33 @@ export interface MarketTickResponse {
   note: string;
 }
 
+export interface AccountMarketStateResponse {
+  account_id: string;
+  symbol: string;
+  status: "FRESH" | "STALE" | "NO_DATA" | string;
+  is_fresh: boolean;
+  age_ms: number | null;
+  bid: string | null;
+  ask: string | null;
+  spread: string | null;
+  point: string | null;
+  digits: number;
+  tick_time: string | null;
+  tick_volume: number;
+  received_at: string | null;
+}
+
+export interface RiskDecisionResponse {
+  decision: "ALLOW" | "BLOCK";
+  reason_code: string;
+  reason: string;
+  symbol: string;
+  timestamp: string;
+  market_data: Record<string, unknown> | null;
+  details: Record<string, unknown>;
+  account_id: string;
+}
+
 export interface SignalsResponse {
   status: string;
   signals: unknown[];
@@ -290,6 +317,9 @@ export const activityApi = {
 export const riskApi = {
   getState: (accountId: string, token: string) =>
     apiFetch<RiskStateResponse>(`/api/v1/risk/${accountId}`, { token }),
+  // Phase 3: authoritative server-side risk gate decision (ALLOW / BLOCK + reason_code)
+  getDecision: (accountId: string, token: string) =>
+    apiFetch<RiskDecisionResponse>(`/api/v1/risk/${accountId}/decision`, { token }),
 };
 export const brainApi = {
   getState: (accountId: string, token: string) =>
@@ -298,6 +328,9 @@ export const brainApi = {
 export const marketApi = {
   getTick: (token: string) =>
     apiFetch<MarketTickResponse>("/api/v1/market/tick", { token }),
+  // Phase 3: account-scoped live market tick & freshness
+  getAccountState: (accountId: string, token: string) =>
+    apiFetch<AccountMarketStateResponse>(`/api/v1/market/${accountId}/state`, { token }),
 };
 export const signalsApi = {
   list: (token: string) =>
