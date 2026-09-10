@@ -34,7 +34,13 @@ async function apiFetch<T>(
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...fetchOptions.headers,
   };
-  const res = await fetch(`${API_BASE}${path}`, { ...fetchOptions, headers });
+  // 10-second hard timeout — prevents any fetch from hanging indefinitely
+  // and leaving the app permanently in INITIALIZING state.
+  // Caller-provided signal takes precedence; otherwise use AbortSignal.timeout.
+  const signal: AbortSignal =
+    (fetchOptions.signal as AbortSignal | null | undefined) ??
+    AbortSignal.timeout(10_000);
+  const res = await fetch(`${API_BASE}${path}`, { ...fetchOptions, signal, headers });
   if (!res.ok) {
     const body = await res.json().catch(() => null);
     throw new ApiError(res.status, body, `API error ${res.status}: ${path}`);
