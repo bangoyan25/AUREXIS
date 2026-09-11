@@ -44,7 +44,7 @@ async def _tick() -> None:
 
         from backend.db.models.strategy import StrategyEngineState
         from backend.db.session import AsyncSessionLocal
-        from backend.services.strategy_service import StrategyService
+        from backend.services.strategy_service import evaluate_strategy_for_account
 
         async with AsyncSessionLocal() as session:
             result = await session.execute(
@@ -55,8 +55,8 @@ async def _tick() -> None:
         for state in states:
             try:
                 async with AsyncSessionLocal() as session:
-                    svc = StrategyService(session)
-                    await svc.evaluate_and_execute(state.account_id)
+                    await evaluate_strategy_for_account(session, state.account_id)
+                    await session.commit()
             except Exception as exc:
                 logger.warning(
                     "strategy_worker.account_error",

@@ -70,3 +70,30 @@ class TestStrategyWorkerLifecycle:
             await strategy_worker._tick.__wrapped__() if hasattr(
                 strategy_worker._tick, "__wrapped__"
             ) else await _fake_tick()
+
+
+    @pytest.mark.asyncio
+    async def test_tick_calls_evaluate_strategy_for_account(self):
+        """_tick must invoke evaluate_strategy_for_account for each enabled state."""
+        import uuid
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        mock_state = MagicMock()
+        mock_state.account_id = uuid.uuid4()
+
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = [mock_state]
+
+        mock_session = AsyncMock()
+        mock_session.execute.return_value = mock_result
+
+        mock_session_ctx = AsyncMock()
+        mock_session_ctx.__aenter__.return_value = mock_session
+        mock_session_ctx.__aexit__.return_value = None
+
+        with (
+            patch("backend.db.session.AsyncSessionLocal", return_value=mock_session_ctx),
+            patch("backend.services.strategy_service.evaluate_strategy_for_account", new_callable=AsyncMock) as mock_eval,
+        ):
+            await strategy_worker._tick()
+            mock_eval.assert_awaited_once_with(mock_session, mock_state.account_id)

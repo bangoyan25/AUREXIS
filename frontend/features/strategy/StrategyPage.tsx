@@ -93,13 +93,14 @@ export function StrategyPage() {
             </div>
           </Panel>
           <Panel title="Latest Candidate Signal">
-            {sig ? (
+            {sig?.signal ? (
               <div className="px-4 py-2">
-                <Row label="Signal ID" value={<span className="font-mono text-2xs text-aurexis-faint">{sig.signal_id.slice(0,12)}…</span>} />
-                <Row label="Symbol" value={<span className="font-mono text-2xs">{sig.symbol}</span>} />
-                <Row label="Direction" value={<Badge variant={sig.direction === "BUY" ? "success" : "danger"}>{sig.direction}</Badge>} />
-                <Row label="Status" value={<span className="font-mono text-2xs">{sig.status}</span>} />
-                <Row label="Generated" value={<span className="font-mono text-2xs text-aurexis-faint">{new Date(sig.generated_at).toLocaleString()}</span>} />
+                <Row label="Signal ID" value={<span className="font-mono text-2xs text-aurexis-faint">{sig.signal.id.slice(0,12)}…</span>} />
+                <Row label="Symbol" value={<span className="font-mono text-2xs">{sig.signal.symbol}</span>} />
+                <Row label="Direction" value={<Badge variant={sig.signal.direction === "BUY" ? "success" : "danger"}>{sig.signal.direction}</Badge>} />
+                <Row label="Status" value={<span className="font-mono text-2xs">{sig.signal.status}</span>} />
+                <Row label="Confidence" value={<span className="font-mono text-2xs">{sig.signal.confidence_score ?? "—"}</span>} />
+                <Row label="Generated" value={<span className="font-mono text-2xs text-aurexis-faint">{new Date(sig.signal.generated_at).toLocaleString()}</span>} />
               </div>
             ) : <EmptyState title="No signals" description="No candidate signals generated yet." />}
           </Panel>

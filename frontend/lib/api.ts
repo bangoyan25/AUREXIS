@@ -392,16 +392,24 @@ export interface StrategyEvaluateResponse {
 }
 
 export interface LatestSignalResponse {
-  signal_id: string;
   account_id: string;
-  symbol: string;
-  direction: string;
-  status: string;
-  strategy_id: string;
-  strategy_version: string;
-  generated_at: string;
-  candle_ts: string | null;
-  confidence_score: string | null;
+  signal: {
+    id: string;
+    symbol: string;
+    direction: string;
+    status: string;
+    strategy_id: string;
+    strategy_version: string;
+    setup_type: string | null;
+    confidence_score: string | null;
+    entry_reference: string | null;
+    suggested_stop_loss: string | null;
+    suggested_take_profit: string | null;
+    spread_at_signal: string | null;
+    news_state_at_signal: string | null;
+    generated_at: string;
+    expires_at: string | null;
+  } | null;
 }
 
 export const strategyApi = {
