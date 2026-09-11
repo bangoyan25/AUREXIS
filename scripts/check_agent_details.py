@@ -9,7 +9,7 @@ from sqlalchemy import select
 from backend.db.session import AsyncSessionLocal
 from backend.db.models.mt5_agent import MT5Agent
 from backend.db.models.account import TradingAccount
-from backend.services.agent_registry import registry
+from backend.ws.agent_manager import agent_manager
 
 
 async def main():
@@ -22,12 +22,12 @@ async def main():
             print(f"  Active: {a.is_active}")
             print(f"  Last heartbeat: {a.last_heartbeat_at}")
             print(f"  Version: {a.version}")
-            print(f"  In-memory connected: {registry.is_connected(a.id)}")
-            print(f"  Account connected: {registry.is_account_connected(a.account_id)}")
+            print(f"  In-memory connected: {agent_manager.is_connected(str(a.id))}")
+            print(f"  Account connected: {agent_manager.is_account_connected(str(a.account_id))}")
 
         print(f"\n=== REGISTRY CONNECTED AGENT IDS ===")
-        print(f"Connected agents count: {len(registry._agents)}")
-        for aid, agent in registry._agents.items():
+        print(f"Connected agents count: {len(agent_manager._connections)}")
+        for aid, agent in agent_manager._connections.items():
             print(f"  Agent ID: {aid}, account_id: {agent.account_id}")
 
         accounts = (await session.execute(select(TradingAccount))).scalars().all()
