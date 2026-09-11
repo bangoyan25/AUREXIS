@@ -91,6 +91,23 @@ def _is_confirmed_demo(account: TradingAccount) -> bool:
     return "demo" in server or "demo" in broker or "demo" in label
 
 
+def _parse_tick_time(raw_ts: str | None, default_iso: str) -> datetime:
+    """Safely parse MT5 tick_time (e.g. '2026.09.11 07:12:19') or fallback to received_at."""
+    if not raw_ts:
+        dt = datetime.fromisoformat(default_iso)
+        return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
+    # MT5 commonly formats as YYYY.MM.DD HH:MM:SS
+    cleaned = raw_ts.strip().replace(".", "-")
+    try:
+        dt = datetime.fromisoformat(cleaned)
+    except ValueError:
+        try:
+            dt = datetime.strptime(cleaned, "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            dt = datetime.fromisoformat(default_iso)
+    return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
+
+
 
 async def get_or_create_strategy_state(
     session: AsyncSession,
@@ -244,7 +261,7 @@ async def evaluate_strategy_for_account(
             spread=Decimal(tick_dict["spread"]),
             point=Decimal(tick_dict.get("point", "0.01")),
             digits=int(tick_dict.get("digits", 2)),
-            tick_time=datetime.fromisoformat(tick_dict.get("tick_time") or tick_dict["received_at"]),
+            tick_time=_parse_tick_time(tick_dict.get("tick_time"), tick_dict["received_at"]),
             volume=Decimal("1"),
         )
     except Exception as exc:

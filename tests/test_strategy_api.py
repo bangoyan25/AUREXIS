@@ -43,6 +43,31 @@ from backend.db.models.user import User
 from backend.main import create_app
 from backend.services import market_data_service
 from backend.services.auth import create_access_token
+from backend.services.strategy_service import _parse_tick_time
+
+
+def test_parse_tick_time_mt5_dots():
+    """MT5 EA sends YYYY.MM.DD HH:MM:SS which must parse cleanly."""
+    dt = _parse_tick_time("2026.09.11 07:12:19", "2026-09-11T07:12:19Z")
+    assert dt.year == 2026
+    assert dt.month == 9
+    assert dt.day == 11
+    assert dt.hour == 7
+    assert dt.minute == 12
+    assert dt.second == 19
+
+
+def test_parse_tick_time_iso_standard():
+    dt = _parse_tick_time("2026-09-11T07:12:19.123456Z", "2026-09-11T07:12:19Z")
+    assert dt.year == 2026
+    assert dt.month == 9
+
+
+def test_parse_tick_time_none_fallback():
+    dt = _parse_tick_time(None, "2026-09-11T07:12:19+00:00")
+    assert dt.year == 2026
+    assert dt.month == 9
+
 from backend.services import strategy_service
 
 

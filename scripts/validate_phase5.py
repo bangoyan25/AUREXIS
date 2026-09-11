@@ -121,6 +121,8 @@ def task6_demo_execution():
     r_eval = client.post(f"/accounts/{ACCOUNT_ID}/strategy/evaluate")
     res = r_eval.json() if r_eval.status_code == 200 else {}
     info(f"eval result: status={res.get('execution_status')} reason={res.get('execution_reason')} dir={res.get('signal_direction')}")
+    return res
+
 
 def task7_verify_open_position():
     banner("TASK 7: VERIFY OPEN POSITION")
