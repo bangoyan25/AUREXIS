@@ -17,6 +17,7 @@ from backend.db.base import Base
 from backend.db.models.account import TradingAccount
 from backend.db.models.equity import EquitySnapshot
 from backend.db.models.mt5_agent import MT5Agent
+from backend.db.models.news import NewsEvent
 from backend.db.models.risk import RiskConfiguration
 from backend.db.models.user import User
 from backend.services.risk_gate import evaluate_risk_gate
@@ -334,4 +335,59 @@ class TestPhase3RiskGateEvaluation:
         )
         assert decision.decision == "BLOCK"
         assert decision.reason_code == "RISK_LIMIT_BLOCK"
+
+    async def test_high_impact_news_blackout_blocks(self, db_session: AsyncSession) -> None:
+        _, account, _ = await _create_test_environment(db_session)
+        now = datetime.now(UTC)
+        event = NewsEvent(
+            source="forexfactory",
+            source_event_id="us_cpi_001",
+            event_name="US Core CPI MoM",
+            currency="USD",
+            impact="HIGH",
+            event_time=now + timedelta(minutes=5),
+            pre_event_window_start=now - timedelta(minutes=10),
+            post_event_window_end=now + timedelta(minutes=20),
+        )
+        db_session.add(event)
+        await db_session.commit()
+
+        tick = self._make_valid_tick()
+        decision = await evaluate_risk_gate(
+            db_session,
+            account.id,
+            "XAUUSD",
+            override_tick=tick,
+            override_agent_connected=True,
+        )
+        assert decision.decision == "BLOCK"
+        assert decision.reason_code == "NEWS_BLACKOUT"
+        assert "US Core CPI MoM" in decision.reason
+
+    async def test_low_impact_news_allows(self, db_session: AsyncSession) -> None:
+        _, account, _ = await _create_test_environment(db_session)
+        now = datetime.now(UTC)
+        event = NewsEvent(
+            source="forexfactory",
+            source_event_id="us_low_001",
+            event_name="US API Crude Oil Stock",
+            currency="USD",
+            impact="LOW",
+            event_time=now + timedelta(minutes=5),
+            pre_event_window_start=now - timedelta(minutes=10),
+            post_event_window_end=now + timedelta(minutes=20),
+        )
+        db_session.add(event)
+        await db_session.commit()
+
+        tick = self._make_valid_tick()
+        decision = await evaluate_risk_gate(
+            db_session,
+            account.id,
+            "XAUUSD",
+            override_tick=tick,
+            override_agent_connected=True,
+        )
+        assert decision.decision == "ALLOW"
+        assert decision.reason_code == "RISK_OK"
 

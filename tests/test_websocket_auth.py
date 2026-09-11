@@ -242,7 +242,7 @@ class TestWebSocketDBOwnership:
             t = client.post("/api/v1/auth/login",
                 json={"email": "ws_o@example.com", "password": "pass12345678"}).json()
             acc = client.post("/api/v1/accounts",
-                json={"label": "T1", "broker": "Test Broker", "mt5_account_number": "999"},
+                json={"label": "T1", "broker": "HFM", "mt5_account_number": "999"},
                 headers={"Authorization": f"Bearer {t['access_token']}"}).json()
             with client.websocket_connect(
                 f"/api/v1/ws?token={t['access_token']}&account_id={acc['id']}"
@@ -258,7 +258,7 @@ class TestWebSocketDBOwnership:
             ta = client.post("/api/v1/auth/login",
                 json={"email": "ws_aa@example.com", "password": "pass12345678"}).json()
             acc = client.post("/api/v1/accounts",
-                json={"label": "A_Acct", "broker": "Test Broker", "mt5_account_number": "111"},
+                json={"label": "A_Acct", "broker": "HFM", "mt5_account_number": "111"},
                 headers={"Authorization": f"Bearer {ta['access_token']}"}).json()
 
             client.post("/api/v1/auth/register",
@@ -281,7 +281,7 @@ class TestWebSocketDBOwnership:
             t = client.post("/api/v1/auth/login",
                 json={"email": "ws_rc@example.com", "password": "pass12345678"}).json()
             acc = client.post("/api/v1/accounts",
-                json={"label": "RC_Acct", "broker": "Test Broker", "mt5_account_number": "222"},
+                json={"label": "RC_Acct", "broker": "HFM", "mt5_account_number": "222"},
                 headers={"Authorization": f"Bearer {t['access_token']}"}).json()
             # First connection
             with client.websocket_connect(

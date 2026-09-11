@@ -30,7 +30,7 @@ TEST_USER = {
 
 TEST_ACCOUNT = {
     "label": "Agent Test Account",
-    "broker": "Test Broker",
+    "broker": "HFM",
     "mt5_account_number": "987654321",
     "mt5_server": "TestBroker-Demo",
 }

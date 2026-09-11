@@ -11,14 +11,23 @@ interface CreateAccountFormProps {
 
 export function CreateAccountForm({ onCreated, onCancel, createAccount }: CreateAccountFormProps) {
   const [label, setLabel] = useState("");
-  const [broker, setBroker] = useState("");
+  const [broker, setBroker] = useState("HFM");
   const [accountNumber, setAccountNumber] = useState("");
-  const [server, setServer] = useState("");
+  const [server, setServer] = useState("HFMarketsSV-Live");
   const [currency, setCurrency] = useState("USD");
   const [isCent, setIsCent] = useState(false);
   const [factor, setFactor] = useState("1.0");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleBrokerChange = (newBroker: string) => {
+    setBroker(newBroker);
+    if (newBroker === "HFM") {
+      setServer("HFMarketsSV-Live");
+    } else if (newBroker === "Exness") {
+      setServer("Exness-Real");
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,11 +67,15 @@ export function CreateAccountForm({ onCreated, onCancel, createAccount }: Create
               maxLength={100} />
           </div>
           <div>
-            <label className="block text-2xs font-mono text-aurexis-subtle mb-1">Broker Name *</label>
-            <input type="text" required placeholder="e.g. Generic Broker / MetaQuotes" value={broker}
-              onChange={(e) => setBroker(e.target.value)}
+            <label className="block text-2xs font-mono text-aurexis-subtle mb-1">Supported Broker *</label>
+            <select
+              value={broker}
+              onChange={(e) => handleBrokerChange(e.target.value)}
               className="w-full bg-aurexis-elevated border border-aurexis-border rounded px-2.5 py-1.5 text-xs text-aurexis-text font-mono focus:outline-none focus:border-aurexis-accent"
-              maxLength={100} />
+            >
+              <option value="HFM">HFM (HF Markets)</option>
+              <option value="Exness">Exness</option>
+            </select>
           </div>
           <div>
             <label className="block text-2xs font-mono text-aurexis-subtle mb-1">MT5 Account Number *</label>

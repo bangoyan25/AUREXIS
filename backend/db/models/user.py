@@ -72,6 +72,12 @@ class User(TimestampMixin, Base):
         back_populates="user",
         lazy="select",
     )
+    licenses: Mapped[list[License]] = relationship(
+        "License",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="select",
+    )
 
     def __repr__(self) -> str:
         return f"<User id={self.id} email={self.email!r}>"

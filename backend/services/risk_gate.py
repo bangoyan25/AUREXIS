@@ -22,6 +22,7 @@ from sqlalchemy import select
 from backend.core.logging import get_logger
 from backend.db.models.account import TradingAccount
 from backend.db.models.mt5_agent import MT5Agent
+from backend.db.models.news import NewsEvent
 from backend.services import market_data_service
 from backend.services.risk_service import (
     build_account_risk_snapshot,
@@ -256,7 +257,43 @@ async def evaluate_risk_gate(
             details={"drawdown_usd": str(drawdown), "limit": str(config.max_drawdown_usd)},
         )
 
-    # 8. All checks passed
+    # 8. High-impact news blackout gate
+    now = datetime.now(UTC)
+    news_res = await session.execute(
+        select(NewsEvent).where(
+            NewsEvent.currency.in_(["USD", "XAU"]),
+            NewsEvent.impact.in_(["HIGH", "CRITICAL"]),
+        )
+    )
+    for ev in news_res.scalars().all():
+        w_start = (
+            ev.pre_event_window_start
+            if ev.pre_event_window_start.tzinfo is not None
+            else ev.pre_event_window_start.replace(tzinfo=UTC)
+        )
+        w_end = (
+            ev.post_event_window_end
+            if ev.post_event_window_end.tzinfo is not None
+            else ev.post_event_window_end.replace(tzinfo=UTC)
+        )
+        if w_start <= now <= w_end:
+            return RiskDecisionOutput(
+                decision="BLOCK",
+                reason_code="NEWS_BLACKOUT",
+                reason=f"High-impact economic event '{ev.event_name}' ({ev.currency}) active within blackout window.",
+                symbol=norm_symbol,
+                market_data=tick,
+                details={
+                    "event_name": ev.event_name,
+                    "impact": ev.impact,
+                    "currency": ev.currency,
+                    "event_time": ev.event_time.isoformat() if ev.event_time else None,
+                    "blackout_start": w_start.isoformat(),
+                    "blackout_end": w_end.isoformat(),
+                },
+            )
+
+    # 9. All checks passed
     return RiskDecisionOutput(
         decision="ALLOW",
         reason_code="RISK_OK",

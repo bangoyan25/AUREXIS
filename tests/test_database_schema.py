@@ -30,7 +30,7 @@ EXPECTED_TABLES = {
     "risk_configurations", "risk_decisions", "candidate_signals",
     "execution_commands", "execution_reports", "positions",
     "equity_snapshots", "daily_session_states", "news_events",
-    "mt5_agent_commands",
+    "mt5_agent_commands", "licenses", "password_resets",
 }
 
 
@@ -95,6 +95,8 @@ def test_foreign_key_ondelete_policies() -> None:
         ("execution_reports", "trading_accounts"): "SET NULL",
         ("positions", "trading_accounts"): "SET NULL",
         ("positions", "execution_commands"): "SET NULL",
+        ("licenses", "users"): "CASCADE",
+        ("password_resets", "users"): "CASCADE",
     }
     for (child, parent), expected_ondelete in expected_rules.items():
         tbl = Base.metadata.tables[child]

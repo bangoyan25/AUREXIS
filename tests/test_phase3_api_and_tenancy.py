@@ -167,6 +167,43 @@ class TestPhase3ApiTenancyAndObservability:
             assert data["is_fresh"] is True
             assert data["status"] == "FRESH"
 
+    async def test_owner_can_read_market_chart(self, test_app_and_session) -> None:
+        app, session_factory = test_app_and_session
+        user, account, agent, token = await _seed_user_with_account(session_factory, "chart_user@example.com")
+
+        # Ingest a bar
+        from backend.ws.agent_protocol import BarData, BarsMessage
+        bar_msg = BarsMessage(
+            type="bars",
+            symbol="XAUUSD",
+            timeframe="M15",
+            bars=[
+                BarData(
+                    time="2026-09-10 12:00:00",
+                    open=Decimal("2650.00"),
+                    high=Decimal("2655.00"),
+                    low=Decimal("2648.00"),
+                    close=Decimal("2652.00"),
+                    tick_volume=10,
+                )
+            ],
+        )
+        await market_data_service.record_closed_bars(agent.id, account.id, bar_msg)
+
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            res = await client.get(
+                f"/api/v1/market/{account.id}/chart?timeframe=M15",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            assert res.status_code == 200
+            data = res.json()
+            assert data["account_id"] == str(account.id)
+            assert data["symbol"] == "XAUUSD"
+            assert data["timeframe"] == "M15"
+            assert data["count"] >= 1
+            assert data["bars"][0]["close"] == 2652.00
+            assert data["cached"] is True
+
     async def test_user_b_cannot_access_user_a_market_state(self, test_app_and_session) -> None:
         app, session_factory = test_app_and_session
         _, account_a, _, _ = await _seed_user_with_account(session_factory, "alice@example.com")

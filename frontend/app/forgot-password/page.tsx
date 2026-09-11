@@ -2,27 +2,25 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/auth-context";
+import { authApi } from "@/lib/api";
 import { Panel, Badge } from "@/components/ui/primitives";
 
-export default function LoginPage() {
-  const router = useRouter();
-  const { login, error } = useAuth();
+export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setFormError(null);
+    setError(null);
+    setMessage(null);
     setIsSubmitting(true);
     try {
-      await login(email, password);
-      router.push("/");
+      const res = await authApi.forgotPassword({ email });
+      setMessage(res.message);
     } catch (err: unknown) {
-      setFormError(err instanceof Error ? err.message : "Login failed");
+      setError(err instanceof Error ? err.message : "Request failed");
     } finally {
       setIsSubmitting(false);
     }
@@ -36,24 +34,30 @@ export default function LoginPage() {
             AUREXIS
           </h1>
           <p className="text-2xs font-mono tracking-widest text-aurexis-faint uppercase">
-            Trading Intelligence Platform
+            Operator Account Recovery
           </p>
           <div className="pt-1">
-            <Badge variant="warning">SIMULATION ONLY</Badge>
+            <Badge variant="warning">PASSWORD RESET</Badge>
           </div>
         </div>
 
-        <Panel title="Trader Authentication">
+        <Panel title="Reset Password">
           <form onSubmit={handleSubmit} className="p-4 space-y-4">
-            {(formError || error) && (
+            {error && (
               <div className="p-2.5 bg-aurexis-danger/10 border border-aurexis-danger/30 rounded text-2xs text-aurexis-danger font-mono">
-                {formError || error}
+                {error}
+              </div>
+            )}
+
+            {message && (
+              <div className="p-2.5 bg-aurexis-success/10 border border-aurexis-success/30 rounded text-2xs text-aurexis-success font-mono">
+                {message}
               </div>
             )}
 
             <div className="space-y-1">
               <label className="text-2xs uppercase tracking-wide text-aurexis-subtle font-mono block">
-                Email
+                Account Email
               </label>
               <input
                 type="email"
@@ -65,48 +69,22 @@ export default function LoginPage() {
               />
             </div>
 
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <label className="text-2xs uppercase tracking-wide text-aurexis-subtle font-mono block">
-                  Password
-                </label>
-                <Link
-                  href="/forgot-password"
-                  className="text-3xs text-aurexis-accent hover:underline font-mono"
-                >
-                  Forgot password?
-                </Link>
-              </div>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full bg-aurexis-surface border border-aurexis-border rounded px-3 py-2 text-xs text-aurexis-text font-mono focus:outline-none focus:border-aurexis-accent"
-              />
-            </div>
-
             <button
               type="submit"
               disabled={isSubmitting}
               className="w-full py-2 bg-aurexis-accent/90 hover:bg-aurexis-accent text-aurexis-bg font-semibold text-xs tracking-wider uppercase rounded transition-colors disabled:opacity-50"
             >
-              {isSubmitting ? "Authenticating..." : "Sign In"}
+              {isSubmitting ? "Sending..." : "Send Reset Link"}
             </button>
           </form>
 
           <div className="px-4 py-3 border-t border-aurexis-border/40 text-center text-2xs text-aurexis-faint font-mono">
-            Need a subscription?{" "}
-            <Link href="/register" className="text-aurexis-accent hover:underline">
-              Activate License
+            Remembered your credentials?{" "}
+            <Link href="/login" className="text-aurexis-accent hover:underline">
+              Back to Login
             </Link>
           </div>
         </Panel>
-
-        <div className="text-center text-2xs text-aurexis-faint font-mono">
-          Live Trading is strictly disabled on this terminal.
-        </div>
       </div>
     </div>
   );

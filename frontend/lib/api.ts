@@ -62,6 +62,10 @@ export interface MeResponse {
   display_name: string;
   is_superuser: boolean;
   created_at: string;
+  tier?: number | null;
+  account_limit?: number | null;
+  license_status?: string | null;
+  license_valid_until?: string | null;
 }
 export interface AccountResponse {
   id: string;
@@ -242,7 +246,7 @@ export const healthApi = {
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
 export const authApi = {
-  register: (body: { email: string; password: string; display_name: string }) =>
+  register: (body: { email: string; password: string; display_name: string; serial_code: string }) =>
     apiFetch<MeResponse>("/api/v1/auth/register", { method: "POST", body: JSON.stringify(body) }),
   login: (body: { email: string; password: string }) =>
     apiFetch<TokenResponse>("/api/v1/auth/login", { method: "POST", body: JSON.stringify(body) }),
@@ -254,6 +258,10 @@ export const authApi = {
     apiFetch<void>("/api/v1/auth/logout", { method: "POST", token }),
   me: (token: string) =>
     apiFetch<MeResponse>("/api/v1/auth/me", { token }),
+  forgotPassword: (body: { email: string }) =>
+    apiFetch<{ message: string }>("/api/v1/auth/forgot-password", { method: "POST", body: JSON.stringify(body) }),
+  resetPassword: (body: { token: string; new_password: string }) =>
+    apiFetch<{ message: string }>("/api/v1/auth/reset-password", { method: "POST", body: JSON.stringify(body) }),
 };
 
 // ── Accounts ──────────────────────────────────────────────────────────────────
@@ -273,6 +281,8 @@ export const accountsApi = {
     }),
   delete: (id: string, token: string) =>
     apiFetch<void>(`/api/v1/accounts/${id}`, { method: "DELETE", token }),
+  getBrokers: (token: string) =>
+    apiFetch<Array<{ id: string; name: string; servers: string[]; supports_cent: boolean }>>("/api/v1/accounts/brokers", { token }),
 };
 
 // ── Agents ────────────────────────────────────────────────────────────────────
@@ -331,6 +341,15 @@ export const marketApi = {
   // Phase 3: account-scoped live market tick & freshness
   getAccountState: (accountId: string, token: string) =>
     apiFetch<AccountMarketStateResponse>(`/api/v1/market/${accountId}/state`, { token }),
+  getChart: (accountId: string, token: string, timeframe: string = "M5", limit: number = 100) =>
+    apiFetch<{
+      account_id: string;
+      symbol: string;
+      timeframe: string;
+      count: number;
+      bars: Array<{ time: string; open: number; high: number; low: number; close: number; volume: number }>;
+      cached: boolean;
+    }>(`/api/v1/market/${accountId}/chart?timeframe=${encodeURIComponent(timeframe)}&limit=${limit}`, { token }),
 };
 export const signalsApi = {
   list: (token: string) =>

@@ -12,6 +12,8 @@ from backend.db.models.execution import ExecutionCommand, ExecutionReport, Posit
 from backend.db.models.license import License  # noqa: F401
 from backend.db.models.mt5_agent import MT5Agent  # noqa: F401
 from backend.db.models.news import NewsEvent  # noqa: F401
+from backend.db.models.password_reset import PasswordResetToken  # noqa: F401
+
 from backend.db.models.refresh_token import RefreshToken  # noqa: F401
 from backend.db.models.risk import RiskConfiguration, RiskDecision  # noqa: F401
 from backend.db.models.signal import CandidateSignal  # noqa: F401

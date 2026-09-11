@@ -9,7 +9,7 @@ export interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, displayName: string) => Promise<void>;
+  register: (email: string, password: string, displayName: string, serialCode: string) => Promise<void>;
   logout: () => void;
   error: string | null;
 }
@@ -83,11 +83,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const register = async (email: string, password: string, displayName: string) => {
+  const register = async (email: string, password: string, displayName: string, serialCode: string) => {
     setError(null);
     setIsLoading(true);
     try {
-      await authApi.register({ email, password, display_name: displayName });
+      await authApi.register({
+        email,
+        password,
+        display_name: displayName,
+        serial_code: serialCode,
+      });
       await login(email, password);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Registration failed";

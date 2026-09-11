@@ -22,7 +22,7 @@ TEST_JWT = "test-secret-x12345678901234567890123456"
 TEST_USER = {"email": "acct@example.com", "password": "secure-password-123", "display_name": "Acct User"}
 TEST_ACCOUNT = {
     "label": "Demo Cent 1",
-    "broker": "Demo Broker",
+    "broker": "HFM",
     "mt5_account_number": "123456",
     "broker_currency": "Cent",
     "is_cent_account": True,

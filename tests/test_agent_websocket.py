@@ -91,7 +91,7 @@ USER_B = {
 }
 ACCOUNT_DATA = {
     "label": "WS Test Account",
-    "broker": "WS Broker",
+    "broker": "HFM",
     "mt5_account_number": "999888777",
     "mt5_server": "WS-Demo-Server",
 }

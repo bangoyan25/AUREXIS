@@ -44,7 +44,7 @@ USER_B = {
 }
 TEST_ACCOUNT = {
     "label": "Cmd Test Account",
-    "broker": "Test Broker",
+    "broker": "HFM",
     "mt5_account_number": "111222333",
     "mt5_server": "TestBroker-Demo",
 }
@@ -258,7 +258,7 @@ class TestUserCommandAPI:
         cmd_id = _create_command(client, token_a, agent_id_a, "PING").json()["id"]
 
         token_b = _register_and_login(client, USER_B)
-        account_b = _create_account(client, token_b, account={"label": "B Acct", "broker": "TestBroker", "mt5_account_number": "9999", "mt5_server": "Demo-B"})
+        account_b = _create_account(client, token_b, account={"label": "B Acct", "broker": "HFM", "mt5_account_number": "9999", "mt5_server": "Demo-B"})
         agent_id_b, _ = _register_agent(client, token_b, account_b)
 
         # User B with Agent B cannot read Agent A command

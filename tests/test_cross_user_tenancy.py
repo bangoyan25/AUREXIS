@@ -55,7 +55,7 @@ def _rlogin(client, email):
     return l.json()["access_token"]
 
 def _acct(client, token):
-    r = client.post("/api/v1/accounts", json={"label": "A", "broker": "B", "mt5_account_number": "1"}, headers={"Authorization": f"Bearer {token}"})
+    r = client.post("/api/v1/accounts", json={"label": "A", "broker": "HFM", "mt5_account_number": "1"}, headers={"Authorization": f"Bearer {token}"})
     assert r.status_code == 201
     return r.json()["id"]
 

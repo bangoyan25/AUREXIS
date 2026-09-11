@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { Panel, Badge } from "@/components/ui/primitives";
@@ -8,18 +9,30 @@ import { Panel, Badge } from "@/components/ui/primitives";
 export default function RegisterPage() {
   const router = useRouter();
   const { register, error } = useAuth();
+  const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [displayName, setDisplayName] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [serialCode, setSerialCode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
+
+    if (password !== confirmPassword) {
+      setFormError("Passwords do not match");
+      return;
+    }
+    if (!serialCode.trim()) {
+      setFormError("A valid subscription serial code is mandatory");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      await register(email, password, displayName);
+      await register(email, password, displayName, serialCode.trim());
       router.push("/");
     } catch (err: unknown) {
       setFormError(err instanceof Error ? err.message : "Registration failed");
@@ -86,10 +99,43 @@ export default function RegisterPage() {
               <input
                 type="password"
                 required
+                minLength={8}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 className="w-full bg-aurexis-surface border border-aurexis-border rounded px-3 py-2 text-xs text-aurexis-text font-mono focus:outline-none focus:border-aurexis-accent"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-2xs uppercase tracking-wide text-aurexis-subtle font-mono block">
+                Confirm Password
+              </label>
+              <input
+                type="password"
+                required
+                minLength={8}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full bg-aurexis-surface border border-aurexis-border rounded px-3 py-2 text-xs text-aurexis-text font-mono focus:outline-none focus:border-aurexis-accent"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <label className="text-2xs uppercase tracking-wide text-aurexis-subtle font-mono block">
+                  Serial Code
+                </label>
+                <span className="text-3xs text-aurexis-faint font-mono">AURX-T[1-3]-...</span>
+              </div>
+              <input
+                type="text"
+                required
+                value={serialCode}
+                onChange={(e) => setSerialCode(e.target.value.toUpperCase())}
+                placeholder="AURX-T1-XXXX-XXXX-XXXX"
+                className="w-full bg-aurexis-surface border border-aurexis-border rounded px-3 py-2 text-xs text-aurexis-text font-mono uppercase focus:outline-none focus:border-aurexis-accent tracking-wider"
               />
             </div>
 
@@ -98,9 +144,16 @@ export default function RegisterPage() {
               disabled={isSubmitting}
               className="w-full py-2 bg-aurexis-accent/90 hover:bg-aurexis-accent text-aurexis-bg font-semibold text-xs tracking-wider uppercase rounded transition-colors disabled:opacity-50"
             >
-              {isSubmitting ? "Registering..." : "Create Account"}
+              {isSubmitting ? "Activating..." : "Register & Activate License"}
             </button>
           </form>
+
+          <div className="px-4 py-3 border-t border-aurexis-border/40 text-center text-2xs text-aurexis-faint font-mono">
+            Already have an active account?{" "}
+            <Link href="/login" className="text-aurexis-accent hover:underline">
+              Sign In
+            </Link>
+          </div>
         </Panel>
       </div>
     </div>

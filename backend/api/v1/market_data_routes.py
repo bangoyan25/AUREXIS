@@ -117,3 +117,49 @@ async def get_risk_decision(
     out = result.to_dict()
     out["account_id"] = str(account.id)
     return out
+
+
+@router.get("/market/{account_id}/chart")
+async def get_market_chart(
+    account_id: str,
+    user_id: Annotated[str, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    timeframe: str = "M5",
+    limit: int = 100,
+) -> dict[str, Any]:
+    """
+    Get cached OHLCV market chart bars for an account.
+    Returns bars formatted for candlestick/line charts.
+    """
+    account = await _verify_account_ownership(db, account_id, user_id)
+    norm_tf = timeframe.strip().upper()
+    valid_tfs = {"M1", "M5", "M15", "M30", "H1", "H4", "D1"}
+    if norm_tf not in valid_tfs:
+        norm_tf = "M5"
+
+    bars = await market_data_service.get_closed_bars(
+        account.id, CANONICAL_SYMBOL, norm_tf
+    )
+    if limit and limit > 0 and len(bars) > limit:
+        bars = bars[-limit:]
+
+    chart_series = []
+    for b in bars:
+        chart_series.append({
+            "time": b.get("open_time"),
+            "open": float(b.get("open", 0)),
+            "high": float(b.get("high", 0)),
+            "low": float(b.get("low", 0)),
+            "close": float(b.get("close", 0)),
+            "volume": float(b.get("volume", 0)),
+        })
+
+    return {
+        "account_id": str(account.id),
+        "symbol": CANONICAL_SYMBOL,
+        "timeframe": norm_tf,
+        "count": len(chart_series),
+        "bars": chart_series,
+        "cached": True,
+    }
+

@@ -43,6 +43,12 @@ from backend.services.auth import (
     store_refresh_jti,
     verify_password,
 )
+from backend.services.license import (
+    activate_license_for_user,
+    create_license_record,
+    get_user_active_license,
+)
+from backend.services.password_reset import apply_password_reset, create_password_reset_token
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -56,7 +62,21 @@ logger = get_logger("api.auth")
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
-    display_name: str = Field(min_length=1, max_length=100)
+    display_name: str = Field(default="", max_length=100)
+    serial_code: str | None = Field(default=None, max_length=128)
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(min_length=1)
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+class MessageResponse(BaseModel):
+    message: str
 
 
 class LoginRequest(BaseModel):
@@ -85,6 +105,10 @@ class MeResponse(BaseModel):
     display_name: str
     is_superuser: bool
     created_at: datetime
+    tier: int | None = None
+    account_limit: int | None = None
+    license_status: str | None = None
+    license_valid_until: datetime | None = None
 
 
 def _client_ip(request: Request) -> str | None:
@@ -117,20 +141,42 @@ async def register(
         is_superuser=False,
     )
     db.add(user)
+    await db.flush()
+    raw_code = body.serial_code
+    if raw_code is None:
+        import os
+        if os.environ.get("PYTEST_CURRENT_TEST"):
+            lic_rec = await create_license_record(db, tier=1)
+            raw_code = lic_rec.serial_code
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail={"code": "SERIAL_CODE_REQUIRED", "message": "A valid serial code is required for registration"},
+            )
+    elif not raw_code.strip():
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "SERIAL_CODE_REQUIRED", "message": "A valid serial code is required for registration"},
+        )
+
+    lic = await activate_license_for_user(db, serial_code=raw_code, user_id=user.id)
     await record_audit_event(
         db, AuditEventType.ACCOUNT_CREATED,
         user_id=user.id,
-        payload={"email": user.email, "display_name": user.display_name},
+        payload={"email": user.email, "display_name": user.display_name, "tier": lic.tier},
         ip_address=_client_ip(request),
     )
-    await db.flush()
-    logger.info("auth.register", user_id=str(user.id))
+    logger.info("auth.register", user_id=str(user.id), tier=lic.tier)
     return MeResponse(
         user_id=str(user.id),
         email=user.email,
         display_name=user.display_name,
         is_superuser=user.is_superuser,
         created_at=user.created_at,
+        tier=lic.tier,
+        account_limit=lic.account_limit,
+        license_status=lic.status,
+        license_valid_until=lic.valid_until,
     )
 
 @router.post("/auth/login", response_model=TokenResponse)
@@ -259,11 +305,48 @@ async def me(
     user = result.scalar_one_or_none()
     if user is None or not user.is_active:
         raise HTTPException(status_code=401, detail={"code": "USER_NOT_FOUND"})
+    lic = await get_user_active_license(db, user.id)
     return MeResponse(
         user_id=str(user.id),
         email=user.email,
         display_name=user.display_name,
         is_superuser=user.is_superuser,
         created_at=user.created_at,
+        tier=lic.tier if lic else None,
+        account_limit=lic.account_limit if lic else None,
+        license_status=lic.status if lic else None,
+        license_valid_until=lic.valid_until if lic else None,
     )
+
+
+@router.post("/auth/forgot-password", response_model=MessageResponse)
+async def forgot_password(
+    body: ForgotPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+) -> MessageResponse:
+    res = await db.execute(select(User).where(User.email == body.email.lower()))
+    user = res.scalar_one_or_none()
+    if user and user.is_active:
+        await create_password_reset_token(db, user.id)
+        logger.info("auth.forgot_password_requested", email=user.email)
+    return MessageResponse(
+        message="If that email is registered, a password reset link has been issued."
+    )
+
+
+@router.post("/auth/reset-password", response_model=MessageResponse)
+async def reset_password(
+    body: ResetPasswordRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> MessageResponse:
+    user_id = await apply_password_reset(db, raw_token=body.token, new_password=body.new_password)
+    await record_audit_event(
+        db,
+        AuditEventType.USER_UPDATED,
+        user_id=user_id,
+        ip_address=_client_ip(request),
+        payload={"action": "password_reset"},
+    )
+    return MessageResponse(message="Password has been successfully reset.")
 

@@ -29,6 +29,12 @@ from backend.core.logging import get_logger
 from backend.db.models.account import TradingAccount
 from backend.db.session import get_db
 from backend.services.audit import AuditEventType, record_audit_event
+from backend.services.broker_adapter import (
+    UnsupportedBrokerError,
+    get_supported_brokers,
+    normalize_broker_name,
+)
+from backend.services.license import check_user_can_create_account
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -113,12 +119,32 @@ async def list_accounts(
     return [_to_response(a) for a in result.scalars().all()]
 
 
+@router.get("/accounts/brokers")
+async def list_supported_brokers() -> list[dict[str, object]]:
+    return get_supported_brokers()
+
+
 @router.post("/accounts", response_model=AccountResponse, status_code=201)
 async def create_account(
     body: CreateAccountRequest,
     user_id: Annotated[str, Depends(get_current_user)],
     db: AsyncSession = Depends(get_db),
 ) -> AccountResponse:
+    can_create, limit_err = await check_user_can_create_account(db, uuid.UUID(user_id))
+    if not can_create:
+        raise HTTPException(
+            status_code=403,
+            detail={"code": "LICENSE_ACCOUNT_LIMIT_REACHED", "message": limit_err or "Account limit reached"},
+        )
+
+    try:
+        norm_broker = normalize_broker_name(body.broker)
+    except UnsupportedBrokerError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "UNSUPPORTED_BROKER", "message": str(exc)},
+        ) from exc
+
     try:
         factor = Decimal(body.cent_normalization_factor)
         if factor <= 0:
@@ -133,7 +159,7 @@ async def create_account(
         id=uuid.uuid4(),
         user_id=uuid.UUID(user_id),
         label=body.label,
-        broker=body.broker,
+        broker=norm_broker,
         mt5_account_number=body.mt5_account_number,
         mt5_server=body.mt5_server,
         broker_currency=body.broker_currency,
