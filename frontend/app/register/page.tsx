@@ -52,7 +52,7 @@ export default function RegisterPage() {
             Create Trader Identity
           </p>
           <div className="pt-1">
-            <Badge variant="warning">SIMULATION ONLY</Badge>
+            <Badge variant="accent">LICENSE ACTIVATION</Badge>
           </div>
         </div>
 

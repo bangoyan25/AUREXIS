@@ -224,7 +224,7 @@ export interface PerformanceResponse {
   total_trades: number;
   win_rate: number | null;
   total_pnl_usd: string;
-  daily_pnl: unknown[];
+  daily_pnl: Array<{ date: string; pnl_usd: string }>;
   note: string;
 }
 

@@ -34,10 +34,10 @@ export function GlobalHeader({
       className="fixed top-0 left-sidebar right-0 z-30 h-12 bg-aurexis-surface border-b border-aurexis-border flex items-center px-5 gap-6"
       aria-label="Global header"
     >
-      {/* Mode badge: MOCK / SIMULATION / LIVE */}
+      {/* Platform Status Badge */}
       <div className="flex items-center gap-2 flex-shrink-0">
-        <Badge variant={process.env.NEXT_PUBLIC_TRADING_MODE === "live" ? "danger" : "warning"}>
-          {(process.env.NEXT_PUBLIC_TRADING_MODE || "SIMULATION").toUpperCase()}
+        <Badge variant={process.env.NEXT_PUBLIC_TRADING_MODE === "live" ? "danger" : "accent"}>
+          {process.env.NEXT_PUBLIC_TRADING_MODE === "live" ? "LIVE EXECUTION" : "AUREXIS PLATFORM"}
         </Badge>
       </div>
 

@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.api.v1.auth import get_current_user
+from backend.api.deps import get_current_user
 from backend.db.models.account import TradingAccount
 from backend.db.session import get_db
 from backend.services import market_data_service
@@ -124,7 +124,7 @@ async def get_market_chart(
     account_id: str,
     user_id: Annotated[str, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    timeframe: str = "M5",
+    timeframe: str = "M15",
     limit: int = 100,
 ) -> dict[str, Any]:
     """
@@ -135,11 +135,20 @@ async def get_market_chart(
     norm_tf = timeframe.strip().upper()
     valid_tfs = {"M1", "M5", "M15", "M30", "H1", "H4", "D1"}
     if norm_tf not in valid_tfs:
-        norm_tf = "M5"
+        norm_tf = "M15"
 
     bars = await market_data_service.get_closed_bars(
         account.id, CANONICAL_SYMBOL, norm_tf
     )
+    # If requested timeframe has no bars yet, fallback to M15 where live bars are ingested
+    if not bars and norm_tf != "M15":
+        m15_bars = await market_data_service.get_closed_bars(
+            account.id, CANONICAL_SYMBOL, "M15"
+        )
+        if m15_bars:
+            bars = m15_bars
+            norm_tf = "M15"
+
     if limit and limit > 0 and len(bars) > limit:
         bars = bars[-limit:]
 

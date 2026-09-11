@@ -5,7 +5,6 @@
  */
 import { Sidebar } from "./Sidebar";
 import { GlobalHeader } from "./GlobalHeader";
-import { MockIndicator } from "@/components/ui/primitives";
 import { useAuth } from "@/lib/auth-context";
 import { useSelectedAccount } from "@/lib/account-context";
 import { useHealth } from "@/lib/hooks/useHealth";
@@ -86,7 +85,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {children}
         </div>
       </main>
-      <MockIndicator />
     </>
   );
 }

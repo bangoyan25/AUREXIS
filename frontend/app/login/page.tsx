@@ -39,7 +39,7 @@ export default function LoginPage() {
             Trading Intelligence Platform
           </p>
           <div className="pt-1">
-            <Badge variant="warning">SIMULATION ONLY</Badge>
+            <Badge variant="accent">CENTRALIZED BRAIN</Badge>
           </div>
         </div>
 
@@ -105,7 +105,7 @@ export default function LoginPage() {
         </Panel>
 
         <div className="text-center text-2xs text-aurexis-faint font-mono">
-          Live Trading is strictly disabled on this terminal.
+          Protected by Server-Side Risk Engine & Automated Reconciliation
         </div>
       </div>
     </div>

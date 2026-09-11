@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { Panel, StatRow, Badge } from "@/components/ui/primitives";
 import { RegimeBadge } from "@/components/ui/badges";
 import { FreshnessBadge, AgentLinkBadge, RiskDecisionBadge, ReasonCodeBadge } from "@/components/ui/phase3";
@@ -93,6 +94,14 @@ export function MarketPanel() {
           label="Volatility"
           value={<Badge variant="muted">{b?.volatility ?? "NOT_CONFIGURED"}</Badge>}
         />
+        <div className="pt-2.5 mt-2 border-t border-aurexis-border/40 flex justify-end">
+          <Link
+            href="/market"
+            className="text-2xs font-mono text-aurexis-accent hover:underline flex items-center gap-1"
+          >
+            Open Interactive Candlestick Chart →
+          </Link>
+        </div>
       </div>
     </Panel>
   );
