@@ -26,7 +26,7 @@ from backend.db.models.account import TradingAccount
 from backend.db.models.risk import RiskConfiguration
 from backend.db.models.signal import CandidateSignal as DbCandidateSignal
 from backend.db.session import get_db
-from backend.services import strategy_service
+from backend.services import market_data_service, strategy_service
 
 router = APIRouter(tags=["strategy-engine"])
 
@@ -75,6 +75,8 @@ class StrategyStateResponse(BaseModel):
     last_risk_decision: str | None = None
     last_risk_reason_code: str | None = None
     last_execution_status: str | None = None
+    bars_count: int = 0
+    warmup_status: str = "BARS_WARMING_UP"
 
 
 class CandidateSignalResponse(BaseModel):
@@ -107,7 +109,8 @@ class EnableStrategyRequest(BaseModel):
     )
 
 
-def _state_to_response(state: Any) -> StrategyStateResponse:
+def _state_to_response(state: Any, bars_count: int = 0) -> StrategyStateResponse:
+    warmup_status = "READY" if bars_count >= 50 else "BARS_WARMING_UP"
     return StrategyStateResponse(
         account_id=str(state.account_id),
         enabled=state.enabled,
@@ -125,6 +128,8 @@ def _state_to_response(state: Any) -> StrategyStateResponse:
         last_risk_decision=state.last_risk_decision,
         last_risk_reason_code=state.last_risk_reason_code,
         last_execution_status=state.last_execution_status,
+        bars_count=bars_count,
+        warmup_status=warmup_status,
     )
 
 
@@ -142,7 +147,10 @@ async def get_strategy_state(
     account = await _verify_account_ownership(db, account_id, user_id)
     state = await strategy_service.get_or_create_strategy_state(db, account.id)
     await db.commit()
-    return _state_to_response(state)
+    bars = await market_data_service.get_closed_bars(
+        account.id, strategy_service.CANONICAL_SYMBOL, strategy_service.PRIMARY_TIMEFRAME
+    )
+    return _state_to_response(state, bars_count=len(bars))
 
 
 @router.post(
@@ -166,7 +174,10 @@ async def enable_strategy_endpoint(
         dry_run=dry_run,
     )
     await db.commit()
-    return _state_to_response(state)
+    bars = await market_data_service.get_closed_bars(
+        account.id, strategy_service.CANONICAL_SYMBOL, strategy_service.PRIMARY_TIMEFRAME
+    )
+    return _state_to_response(state, bars_count=len(bars))
 
 
 @router.post(
@@ -187,7 +198,10 @@ async def disable_strategy_endpoint(
         account_id=account.id,
     )
     await db.commit()
-    return _state_to_response(state)
+    bars = await market_data_service.get_closed_bars(
+        account.id, strategy_service.CANONICAL_SYMBOL, strategy_service.PRIMARY_TIMEFRAME
+    )
+    return _state_to_response(state, bars_count=len(bars))
 
 
 @router.post(
@@ -260,6 +274,44 @@ async def get_latest_signal(
             generated_at=sig.generated_at.isoformat(),
             expires_at=sig.expires_at.isoformat() if sig.expires_at is not None else None,
         ),
+    )
+
+class StrategyBarsResponse(BaseModel):
+    account_id: str
+    symbol: str
+    timeframe: str
+    count: int
+    first_candle_ts: str | None = None
+    last_candle_ts: str | None = None
+    bars: list[dict[str, Any]]
+
+
+@router.get(
+    "/accounts/{account_id}/strategy/bars",
+    response_model=StrategyBarsResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Get closed bars available to strategy engine for an account",
+)
+async def get_strategy_bars(
+    account_id: str,
+    user_id: Annotated[str, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    timeframe: str = "M15",
+) -> StrategyBarsResponse:
+    account = await _verify_account_ownership(db, account_id, user_id)
+    bars = await market_data_service.get_closed_bars(
+        account.id, strategy_service.CANONICAL_SYMBOL, timeframe
+    )
+    first_ts = bars[0]["open_time"] if bars else None
+    last_ts = bars[-1]["open_time"] if bars else None
+    return StrategyBarsResponse(
+        account_id=str(account.id),
+        symbol=strategy_service.CANONICAL_SYMBOL,
+        timeframe=timeframe,
+        count=len(bars),
+        first_candle_ts=first_ts,
+        last_candle_ts=last_ts,
+        bars=bars,
     )
 
 

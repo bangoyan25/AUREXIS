@@ -123,4 +123,12 @@ class MultiTimeframeBarManager:
     def get_latest_closed_bar(self, timeframe: str) -> Bar | None:
         bars = self.get_closed_bars(timeframe)
         return bars[-1] if bars else None
+    def seed_closed_bars(self, timeframe: str, bars: list[Bar]) -> None:
+        """Seed closed bars directly into the specified timeframe builder."""
+        builder = self._builders.get(timeframe)
+        if builder is None:
+            raise ValueError(f"Timeframe {timeframe} not tracked")
+        builder.seed_closed_bars(bars)
+
+
 

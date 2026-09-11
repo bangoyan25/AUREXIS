@@ -194,6 +194,35 @@ async def claim_pending_commands(
 
     return commands
 
+
+async def mark_sent(
+    db: AsyncSession,
+    agent_id: uuid.UUID,
+    command_id: uuid.UUID,
+    account_user_id: uuid.UUID | None = None,
+    account_id: uuid.UUID | None = None,
+) -> MT5AgentCommand:
+    """Mark a single command SENT."""
+    cmd = await get_command(db, agent_id, command_id)
+    if cmd is None:
+        raise CommandNotFoundError(f"Command {command_id} not found for agent {agent_id}")
+    now = datetime.now(UTC)
+    cmd.status = "SENT"
+    cmd.sent_at = now
+    await record_audit_event(
+        db,
+        AuditEventType.MT5_AGENT_COMMAND_SENT,
+        user_id=account_user_id,
+        account_id=account_id,
+        mt5_agent_id=agent_id,
+        payload={
+            "command_id": str(cmd.id),
+            "command_type": cmd.command_type,
+        },
+    )
+    await db.flush()
+    return cmd
+
 async def has_in_flight_command(db: AsyncSession, agent_id: uuid.UUID) -> bool:
     """Return True if agent currently has an active command (SENT or ACKNOWLEDGED)."""
     result = await db.execute(

@@ -81,6 +81,10 @@ export function StrategyPage() {
               <Row label="Version" value={<span className="font-mono text-2xs">{s.strategy_version}</span>} />
               <Row label="Symbol" value={<span className="font-mono text-2xs">{s.symbol}</span>} />
               <Row label="Timeframe" value={<span className="font-mono text-2xs">{s.timeframe}</span>} />
+              <Row label="Bars Available" value={<span className="font-mono text-2xs">{s.bars_count ?? 0}</span>} />
+              <Row label="Warmup State" value={<Badge variant={s.warmup_status === "READY" ? "success" : "warning"}>{s.warmup_status ?? "WARMING_UP"}</Badge>} />
+              <Row label="Latest Candle" value={<span className="font-mono text-2xs">{s.last_signal_candle_ts ? new Date(s.last_signal_candle_ts).toLocaleString() : "—"}</span>} />
+              <Row label="Kill Switch" value={<Badge variant={strategy.killSwitchActive ? "danger" : "muted"}>{strategy.killSwitchActive ? "ARMED" : "DISARMED"}</Badge>} />
             </div>
           </Panel>
           <Panel title="Last Evaluation">

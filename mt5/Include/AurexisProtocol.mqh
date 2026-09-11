@@ -34,6 +34,7 @@ public:
       CJsonValue *cap2 = new CJsonValue(); cap2.SetString("GET_STATUS"); caps.Add(cap2);
       CJsonValue *cap3 = new CJsonValue(); cap3.SetString("OPEN_POSITION"); caps.Add(cap3);
       CJsonValue *cap4 = new CJsonValue(); cap4.SetString("CLOSE_POSITION"); caps.Add(cap4);
+      CJsonValue *cap5 = new CJsonValue(); cap5.SetString("GET_BARS"); caps.Add(cap5);
       root.Set("capabilities", caps);
 
       return root.Serialize();
@@ -75,6 +76,31 @@ public:
       root.SetString("timestamp", TimeToString(TimeCurrent(), TIME_DATE | TIME_SECONDS));
       return root.Serialize();
    }
+   static string FormatBars(
+      string symbol,
+      string timeframe,
+      const MqlRates &rates[],
+      int count
+   )
+   {
+      string res = "{\"type\":\"bars\",\"symbol\":\"" + symbol + "\",\"timeframe\":\"" + timeframe + "\",\"bars\":[";
+      for(int i = 0; i < count; i++)
+      {
+         if(i > 0) res += ",";
+         res += StringFormat("{\"time\":\"%s\",\"open\":%.5f,\"high\":%.5f,\"low\":%.5f,\"close\":%.5f,\"tick_volume\":%I64d}",
+            TimeToString(rates[i].time, TIME_DATE | TIME_SECONDS),
+            rates[i].open,
+            rates[i].high,
+            rates[i].low,
+            rates[i].close,
+            rates[i].tick_volume
+         );
+      }
+      res += "]}";
+      return res;
+   }
+
+
 
    static string FormatAck(string command_id)
    {

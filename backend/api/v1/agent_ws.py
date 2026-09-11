@@ -41,6 +41,7 @@ from backend.services.auth import verify_password
 from backend.ws.agent_manager import agent_manager
 from backend.ws.agent_protocol import (
     AckMessage,
+    BarsMessage,
     HeartbeatAckMessage,
     HeartbeatMessage,
     HelloMessage,
@@ -261,6 +262,22 @@ async def agent_websocket_endpoint(
                     agent_id=agent_uuid,
                     account_id=agent.account_id,
                     msg=msg,
+                )
+
+            elif isinstance(msg, BarsMessage):
+                # Ingest closed bars strictly bound to authenticated agent & account identity
+                await market_data_service.record_closed_bars(
+                    agent_id=agent_uuid,
+                    account_id=agent.account_id,
+                    msg=msg,
+                )
+                logger.info(
+                    "agent_ws.bars_ingested",
+                    agent_id=agent_id_str,
+                    account_id=str(agent.account_id),
+                    symbol=msg.symbol,
+                    timeframe=msg.timeframe,
+                    count=len(msg.bars),
                 )
 
             elif isinstance(msg, AckMessage):

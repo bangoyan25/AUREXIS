@@ -125,8 +125,23 @@ private:
          frame[pos + i] = (uchar)(payload[i] ^ mask[i % 4]);
 
       int total_len = hdr_len + payload_len;
-      int sent = m_is_tls ? SocketTlsSend(m_socket, frame, total_len) : SocketSend(m_socket, frame, total_len);
-      return (sent == total_len);
+      int sent_total = 0;
+      int attempts = 0;
+      while(sent_total < total_len && attempts < 100)
+      {
+         uchar slice[];
+         int to_send = total_len - sent_total;
+         ArrayCopy(slice, frame, 0, sent_total, to_send);
+         int sent = m_is_tls ? SocketTlsSend(m_socket, slice, to_send) : SocketSend(m_socket, slice, to_send);
+         if(sent <= 0)
+         {
+            Print("[AUREXIS WS ERROR] Socket send failed. Error: ", GetLastError());
+            return false;
+         }
+         sent_total += sent;
+         attempts++;
+      }
+      return (sent_total == total_len);
    }
 
    void ProcessHttpUpgradeResponse()

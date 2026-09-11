@@ -49,6 +49,22 @@ class BarBuilder:
         """All closed bars produced so far, in chronological order."""
         return list(self._closed_bars)
 
+    def seed_closed_bars(self, bars: list[Bar]) -> None:
+        """
+        Seed or update historical closed bars.
+        Bars must be chronologically ordered and is_closed=True.
+        Deduplicates by open_time and preserves ascending chronological order.
+        """
+        existing_by_time = {b.open_time: b for b in self._closed_bars}
+        for b in bars:
+            if not b.is_closed:
+                continue
+            existing_by_time[b.open_time] = b
+        self._closed_bars = sorted(existing_by_time.values(), key=lambda b: b.open_time)
+        if len(self._closed_bars) > 300:
+            self._closed_bars = self._closed_bars[-300:]
+
+
     def _get_bucket_start(self, dt: datetime) -> datetime:
         """Floor datetime to the timeframe interval boundary."""
         epoch = dt.timestamp()

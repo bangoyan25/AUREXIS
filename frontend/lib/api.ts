@@ -374,6 +374,27 @@ export interface StrategyStateResponse {
   last_risk_decision: string | null;
   last_risk_reason_code: string | null;
   last_execution_status: string | null;
+  bars_count?: number;
+  warmup_status?: string;
+}
+
+export interface StrategyBarsResponse {
+  account_id: string;
+  symbol: string;
+  timeframe: string;
+  count: number;
+  first_candle_ts: string | null;
+  last_candle_ts: string | null;
+  bars: Array<{
+    open_time: string;
+    close_time: string;
+    open: string;
+    high: string;
+    low: string;
+    close: string;
+    volume: string;
+    is_closed: boolean;
+  }>;
 }
 
 export interface StrategyEvaluateResponse {
@@ -441,6 +462,11 @@ export const strategyApi = {
     apiFetch<{ account_id: string; kill_switch_active: boolean; status: string }>(
       `/api/v1/accounts/${accountId}/strategy/kill-switch`,
       { method: "POST", body: JSON.stringify({ active }), token }
+    ),
+  getBars: (accountId: string, token: string, timeframe: string = "M15") =>
+    apiFetch<StrategyBarsResponse>(
+      `/api/v1/accounts/${accountId}/strategy/bars?timeframe=${encodeURIComponent(timeframe)}`,
+      { token }
     ),
 };
 

@@ -40,7 +40,7 @@ from backend.ws.agent_manager import agent_manager
 from backend.ws.agent_protocol import CommandMessage, CommandPayload
 from brain.config import default_strat_config
 from brain.market_data.multi_timeframe import MultiTimeframeBarManager
-from brain.market_data.types import Tick
+from brain.market_data.types import Bar, Tick
 from brain.pipeline import SignalPipeline
 from brain.strategy.interfaces import SignalDirection
 
@@ -69,6 +69,42 @@ def _get_bar_manager(account_id: str) -> MultiTimeframeBarManager:
             staleness_threshold_seconds=10.0,
         )
     return _bar_managers[account_id]
+
+
+def seed_account_bars(
+    account_id_str: str,
+    symbol: str,
+    timeframe: str,
+    raw_bars: list[dict[str, Any]],
+) -> None:
+    """Seed closed bars directly into the account's MultiTimeframeBarManager."""
+    if not raw_bars:
+        return
+    bar_manager = _get_bar_manager(account_id_str)
+    bar_objs: list[Bar] = []
+    for b in raw_bars:
+        ot = datetime.fromisoformat(b["open_time"])
+        if ot.tzinfo is None:
+            ot = ot.replace(tzinfo=UTC)
+        ct = datetime.fromisoformat(b["close_time"])
+        if ct.tzinfo is None:
+            ct = ct.replace(tzinfo=UTC)
+        bar_objs.append(
+            Bar(
+                symbol=b.get("symbol", symbol),
+                timeframe=b.get("timeframe", timeframe),
+                open_time=ot,
+                close_time=ct,
+                open_price=Decimal(str(b["open"])),
+                high_price=Decimal(str(b["high"])),
+                low_price=Decimal(str(b["low"])),
+                close_price=Decimal(str(b["close"])),
+                volume=Decimal(str(b.get("volume", "0"))),
+                is_closed=True,
+            )
+        )
+    bar_manager.seed_closed_bars(timeframe, bar_objs)
+
 
 
 def _get_signal_pipeline() -> SignalPipeline:
@@ -288,7 +324,15 @@ async def evaluate_strategy_for_account(
         return result
 
     closed_bars = bar_manager.get_closed_bars(PRIMARY_TIMEFRAME)
-    if not closed_bars:
+    if not closed_bars or len(closed_bars) < 50:
+        stored = await market_data_service.get_closed_bars(
+            account_id, CANONICAL_SYMBOL, PRIMARY_TIMEFRAME
+        )
+        if stored:
+            seed_account_bars(str(account_id), CANONICAL_SYMBOL, PRIMARY_TIMEFRAME, stored)
+            closed_bars = bar_manager.get_closed_bars(PRIMARY_TIMEFRAME)
+
+    if not closed_bars or len(closed_bars) < 50:
         result["execution_reason"] = "BARS_WARMING_UP"
         return result
 

@@ -33,6 +33,7 @@ bool              g_is_welcomed = false;
 uint              g_last_heartbeat = 0;
 MqlTick           g_last_tick;
 uint              g_last_tick_send_time = 0;
+datetime          g_last_m15_bar_time = 0;
 
 //+------------------------------------------------------------------+
 //| Check if account is DEMO                                         |
@@ -316,6 +317,18 @@ void HandleCommand(CJsonValue *cmd)
          Print("[AUREXIS ERROR] CLOSE_POSITION failed: ", err);
       }
    }
+   else if(cmd_type == "GET_BARS")
+   {
+      SendClosedBars(true);
+      CJsonValue *res = new CJsonValue();
+      res.SetType(JSON_OBJECT);
+      res.SetBool("sent", true);
+      res.SetString("symbol", _Symbol);
+      res.SetString("timeframe", "M15");
+      string res_msg = CAurexisProtocol::FormatResult(cmd_id, "COMPLETED", res);
+      g_ws.SendText(res_msg);
+      Print("[AUREXIS] Completed GET_BARS command: ", cmd_id);
+   }
    else
    {
       Print("[AUREXIS WARNING] Unknown command type: ", cmd_type);
@@ -342,6 +355,7 @@ void OnWsMessage(const string msg)
    {
       g_is_welcomed = true;
       Print("[AUREXIS] Welcome received: ", root.GetString("message"));
+      SendClosedBars(true);
    }
    else if(type == "heartbeat_ack")
    {
@@ -411,6 +425,45 @@ void SendMarketTick(bool force = false)
       g_last_tick_send_time = now_tick;
    }
 }
+//+------------------------------------------------------------------+
+//| Stream closed M15 historical bars                                |
+//+------------------------------------------------------------------+
+void SendClosedBars(bool force = false)
+{
+   if(!g_ws.IsConnected() || !g_is_welcomed)
+      return;
+
+   datetime current_bar_time = iTime(_Symbol, PERIOD_M15, 0);
+   if(current_bar_time == 0)
+      return;
+
+   if(!force && current_bar_time == g_last_m15_bar_time)
+      return;
+
+   MqlRates rates[];
+   ArraySetAsSeries(rates, false); // Index 0 is oldest, count-1 is newest closed bar
+   // Start at index 1: bar 0 is the currently forming candle!
+   int copied = CopyRates(_Symbol, PERIOD_M15, 1, 60, rates);
+   if(copied <= 0)
+   {
+      Print("[AUREXIS ERROR] CopyRates failed for ", _Symbol, " M15. Error: ", GetLastError());
+      return;
+   }
+
+   string msg = CAurexisProtocol::FormatBars(_Symbol, "M15", rates, copied);
+   if(g_ws.SendText(msg))
+   {
+      g_last_m15_bar_time = current_bar_time;
+      Print("[AUREXIS] Sent ", copied, " closed M15 bars to backend. Latest closed bar: ",
+         TimeToString(rates[copied - 1].time, TIME_DATE | TIME_SECONDS));
+   }
+   else
+   {
+      Print("[AUREXIS ERROR] Failed to send bars message over WebSocket.");
+   }
+}
+
+
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
@@ -492,6 +545,7 @@ void OnTimer()
          if(g_is_welcomed)
          {
             SendMarketTick(true);
+            SendClosedBars(false);
          }
       }
    }
@@ -500,6 +554,7 @@ void OnTimer()
       g_hello_sent = false;
       g_is_welcomed = false;
       g_last_tick_send_time = 0;
+      g_last_m15_bar_time = 0;
       ZeroMemory(g_last_tick);
    }
 }
@@ -511,5 +566,6 @@ void OnTick()
 {
    g_ws.Tick();
    SendMarketTick(false);
+   SendClosedBars(false);
 }
 //+------------------------------------------------------------------+

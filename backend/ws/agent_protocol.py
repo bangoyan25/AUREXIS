@@ -162,6 +162,81 @@ class MarketDataMessage(BaseModel):
         return self
 
 
+class BarData(BaseModel):
+    """Single historical closed bar from MT5."""
+
+    time: str = Field(min_length=1, max_length=50)
+    open: Decimal
+    high: Decimal
+    low: Decimal
+    close: Decimal
+    tick_volume: int | float | None = Field(default=0)
+
+    @field_validator("open", "high", "low", "close", mode="before")
+    @classmethod
+    def parse_and_validate_price(cls, v: Any, info: Any) -> Decimal:
+        if v is None:
+            raise ValueError(f"{info.field_name} cannot be None")
+        if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+            raise ValueError(f"{info.field_name} cannot be NaN or Infinite")
+        try:
+            d = Decimal(str(v))
+        except (InvalidOperation, TypeError, ValueError) as exc:
+            raise ValueError(f"{info.field_name} must be a valid numeric value") from exc
+
+        if d.is_nan() or d.is_infinite():
+            raise ValueError(f"{info.field_name} cannot be NaN or Infinite")
+        if d <= Decimal("0"):
+            raise ValueError(f"{info.field_name} must be greater than 0")
+        return d
+
+    @field_validator("tick_volume", mode="before")
+    @classmethod
+    def validate_tick_volume(cls, v: Any) -> int | float | None:
+        if v is None:
+            return 0
+        if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+            raise ValueError("tick_volume cannot be NaN or Infinite")
+        if isinstance(v, (int, float)) and v < 0:
+            raise ValueError("tick_volume cannot be negative")
+        return v
+
+    @model_validator(mode="after")
+    def validate_high_low_bounds(self) -> Self:
+        if self.high < self.low:
+            raise ValueError(f"high ({self.high}) cannot be less than low ({self.low})")
+        if self.high < self.open or self.high < self.close:
+            raise ValueError("high cannot be less than open or close")
+        if self.low > self.open or self.low > self.close:
+            raise ValueError("low cannot be greater than open or close")
+        return self
+
+
+class BarsMessage(BaseModel):
+    """Snapshot or stream of closed bars from MT5 execution agent."""
+
+    type: Literal["bars"]
+    symbol: str = Field(min_length=1, max_length=20)
+    timeframe: str = Field(default="M15", max_length=10)
+    bars: list[BarData] = Field(default_factory=list)
+
+    @field_validator("symbol")
+    @classmethod
+    def clean_symbol(cls, v: str) -> str:
+        s = v.strip().upper()
+        if not s.startswith("XAUUSD") and s != "GOLD":
+            raise ValueError(f"Unsupported symbol: {s}")
+        return "XAUUSD"
+
+    @field_validator("timeframe")
+    @classmethod
+    def validate_tf(cls, v: str) -> str:
+        s = v.strip().upper()
+        if s != "M15":
+            raise ValueError(f"Unsupported timeframe: {s}")
+        return s
+
+
 # ---------------------------------------------------------------------------
 # Server → Agent
 # ---------------------------------------------------------------------------
@@ -174,7 +249,7 @@ class WelcomeMessage(BaseModel):
     server_version: str = "1.0"
     # Authoritative command allowlist — do not trust agent-reported capabilities
     allowed_commands: list[str] = Field(
-        default_factory=lambda: ["PING", "GET_STATUS", "OPEN_POSITION", "CLOSE_POSITION"]
+        default_factory=lambda: ["PING", "GET_STATUS", "OPEN_POSITION", "CLOSE_POSITION", "GET_BARS"]
     )
     message: str = "AUREXIS agent channel established"
 
@@ -213,12 +288,14 @@ class ErrorMessage(BaseModel):
 # Discriminated union helpers
 # ---------------------------------------------------------------------------
 
-ALLOWED_AGENT_MESSAGE_TYPES = frozenset({"hello", "heartbeat", "ack", "result", "market_data"})
+ALLOWED_AGENT_MESSAGE_TYPES = frozenset(
+    {"hello", "heartbeat", "ack", "result", "market_data", "bars"}
+)
 
 
 def parse_agent_message(
     data: dict[str, Any],
-) -> HelloMessage | HeartbeatMessage | AckMessage | ResultMessage | MarketDataMessage:
+) -> HelloMessage | HeartbeatMessage | AckMessage | ResultMessage | MarketDataMessage | BarsMessage:
     """
     Parse and validate an incoming agent message dict.
 
@@ -240,4 +317,6 @@ def parse_agent_message(
         return AckMessage(**data)
     if msg_type == "result":
         return ResultMessage(**data)
-    return MarketDataMessage(**data)
+    if msg_type == "market_data":
+        return MarketDataMessage(**data)
+    return BarsMessage(**data)
