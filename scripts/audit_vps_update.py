@@ -28,12 +28,14 @@ def run_audit():
 
         if "licenses" in tables:
             cols = [c["name"] for c in inspector.get_columns("licenses")]
-            req = ["tier", "serial_code_hash", "activation_token_hash", "activated_at", "expires_at", "max_accounts"]
+            req = ["tier", "serial_code", "status", "account_limit", "activated_at", "user_id"]
             missing = [c for c in req if c not in cols]
             if not missing:
                 print(f"  + Table 'licenses' has all required columns: {req}")
             else:
                 failures.append(f"Table 'licenses' missing: {missing}")
+        else:
+            failures.append("Table 'licenses' missing")
 
         with engine.connect() as conn:
             res = conn.execute(text("SELECT version_num FROM alembic_version")).fetchone()
