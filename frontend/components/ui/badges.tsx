@@ -53,9 +53,11 @@ export function AgentStatusBadge({ status }: { status: AgentStatus }) {
   return <Badge variant={m[status]}>{status}</Badge>;
 }
 
-export function BrainStateBadge({ state }: { state: BrainMarketState }) {
-  const m: Record<BrainMarketState, V> = {
+export function BrainStateBadge({ state }: { state: BrainMarketState | string }) {
+  const m: Record<string, V> = {
     INITIALIZING:"muted", WARMING_UP:"info", READY:"success", STALE:"warning", HALTED:"danger", ERROR:"danger",
+    CONFIGURED:"info", NOT_CONFIGURED:"warning",
   };
-  return <Badge variant={m[state]}>{state.replace(/_/g," ")}</Badge>;
+  const variant = m[state] || "muted";
+  return <Badge variant={variant}>{state.replace(/_/g," ")}</Badge>;
 }

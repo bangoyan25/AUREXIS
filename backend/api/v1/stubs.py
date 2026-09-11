@@ -125,25 +125,43 @@ async def get_brain_state(
 ) -> dict[str, Any]:
     try:
         acct_uuid = uuid.UUID(account_id)
-        stmt = select(StrategyEngineState).where(StrategyEngineState.account_id == acct_uuid)
-        res = await db.execute(stmt)
-        state = res.scalar_one_or_none()
-        if state is not None:
-            return {
-                "account_id": account_id,
-                "brain_state": "READY" if state.enabled else "CONFIGURED",
-                "strategy_id": state.strategy_id,
-                "strategy_version": state.strategy_version,
-                "regime": "TRANSITION" if "TRANSITION" in (state.last_signal_reason or "") else "TREND_UP",
-                "structure": "BOS_CONFIRMED",
-                "trend": "BULLISH" if state.last_signal_direction == "BUY" else "NEUTRAL",
-                "momentum": "NORMAL",
-                "volatility": "NORMAL",
-                "active_setup": "CONTINUATION",
-                "confidence": 0.70,
-                "live_trading_enabled": state.enabled and not state.dry_run,
-                "note": state.last_signal_reason or "Strategy engine active.",
-            }
+        from backend.services import market_data_service, strategy_service
+
+        state = await strategy_service.get_or_create_strategy_state(db, acct_uuid)
+        await db.commit()
+
+        bars = await market_data_service.get_closed_bars(
+            acct_uuid, "XAUUSD", "M15"
+        )
+        bars_count = len(bars)
+
+        brain_state = "READY" if bars_count >= 50 or state.enabled else "WARMING_UP"
+
+        regime = "TREND_UP"
+        if state.last_signal_reason and "TRANSITION" in state.last_signal_reason:
+            regime = "TRANSITION"
+        elif state.last_signal_reason and "RANGE" in state.last_signal_reason:
+            regime = "RANGE"
+
+        return {
+            "account_id": account_id,
+            "brain_state": brain_state,
+            "strategy_id": state.strategy_id,
+            "strategy_version": state.strategy_version,
+            "regime": regime,
+            "structure": "BOS_CONFIRMED",
+            "trend": (
+                "BULLISH"
+                if state.last_signal_direction == "BUY"
+                else ("BEARISH" if state.last_signal_direction == "SELL" else "NEUTRAL")
+            ),
+            "momentum": "NORMAL",
+            "volatility": "NORMAL",
+            "active_setup": "CONTINUATION",
+            "confidence": 0.70,
+            "live_trading_enabled": state.enabled and not state.dry_run,
+            "note": state.last_signal_reason or f"Strategy engine active ({bars_count} M15 bars).",
+        }
     except Exception:
         pass
 
