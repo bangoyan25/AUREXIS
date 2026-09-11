@@ -16,7 +16,7 @@ def run_audit():
         import os
         sys.path.insert(0, os.path.abspath("."))
         from backend.core.config import settings
-        engine = create_engine(str(settings.database_url_sync))
+        engine = create_engine(str(settings.DATABASE_SYNC_URL))
         inspector = inspect(engine)
         tables = inspector.get_table_names()
         
