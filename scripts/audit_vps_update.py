@@ -114,20 +114,33 @@ def run_audit():
     print("\n[6] Testing Live Registration & Tier Account Limit Flow...")
     try:
         import uuid
+        from backend.services.license import generate_serial_code
+        fresh_code = generate_serial_code(tier=1)
+        # Insert fresh code synchronously into licenses table
+        with engine.connect() as conn:
+            conn.execute(
+                text(
+                    "INSERT INTO licenses (id, license_key, serial_code, tier, plan, status, account_limit, created_at) "
+                    "VALUES (gen_random_uuid(), :lkey, :code, 1, 'AUREXIS TIER 1', 'UNUSED', 1, now())"
+                ),
+                {"lkey": f"key_{fresh_code}", "code": fresh_code},
+            )
+            conn.commit()
+
         uid = str(uuid.uuid4())[:8]
-        test_email = f"audit_{uid}@aurexis.local"
-        # Use the code generated earlier
+        test_email = f"audit_{uid}@aurexis.web.id"
+
         reg_resp = httpx.post(
             "http://127.0.0.1:8000/api/v1/auth/register",
             json={
                 "email": test_email,
                 "password": "Password123!Safe",
                 "full_name": "Audit User",
-                "serial_code": "AURX-T1-B67D-7564-6099",
+                "serial_code": fresh_code,
             },
             timeout=5.0,
         )
-        print(f"  + POST /api/v1/auth/register with serial -> Status {reg_resp.status_code}")
+        print(f"  + POST /api/v1/auth/register with fresh code {fresh_code} -> Status {reg_resp.status_code}")
         if reg_resp.status_code != 201:
             failures.append(f"Registration failed: {reg_resp.status_code} {reg_resp.text}")
         else:
@@ -165,10 +178,10 @@ def run_audit():
             dup_reg = httpx.post(
                 "http://127.0.0.1:8000/api/v1/auth/register",
                 json={
-                    "email": f"dup_{uid}@aurexis.local",
+                    "email": f"dup_{uid}@aurexis.web.id",
                     "password": "Password123!Safe",
                     "full_name": "Dup User",
-                    "serial_code": "AURX-T1-B67D-7564-6099",
+                    "serial_code": fresh_code,
                 },
                 timeout=5.0,
             )
