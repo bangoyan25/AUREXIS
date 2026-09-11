@@ -19,6 +19,7 @@ from backend.api.v1 import (
     execution_routes,
     health,
     market_data_routes,
+    strategy_routes,
     stubs,
     websocket,
 )
@@ -56,6 +57,9 @@ router.include_router(agent_ws.router, prefix="")
 # Market data & Risk gate observability
 router.include_router(market_data_routes.router, prefix="")
 
+
+# Strategy engine (Phase 4B)
+router.include_router(strategy_routes.router, prefix="")
 
 # Domain stubs ? NOT_CONFIGURED/EMPTY boundaries for unimplemented domains
 router.include_router(stubs.router, prefix="")

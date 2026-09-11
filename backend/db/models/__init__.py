@@ -14,5 +14,6 @@ from backend.db.models.news import NewsEvent  # noqa: F401
 from backend.db.models.refresh_token import RefreshToken  # noqa: F401
 from backend.db.models.risk import RiskConfiguration, RiskDecision  # noqa: F401
 from backend.db.models.signal import CandidateSignal  # noqa: F401
+from backend.db.models.strategy import StrategyEngineState  # noqa: F401
 from backend.db.models.user import User  # noqa: F401
 
