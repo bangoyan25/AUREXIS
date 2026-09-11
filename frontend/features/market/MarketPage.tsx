@@ -76,17 +76,19 @@ export function MarketPage() {
     void fetchChart();
   }, [fetchChart]);
 
-  // Periodic refresh for new closed bars (every 3 seconds)
+  // Periodic refresh for new closed bars (every 1.2 seconds)
   useEffect(() => {
     const timer = setInterval(() => {
       void fetchChart();
-    }, 3000);
+    }, 1200);
     return () => clearInterval(timer);
   }, [fetchChart]);
 
   const tick = liveMarket.status === "OK" ? liveMarket.data : null;
   const b = brain.status === "OK" ? brain.data : null;
   const liveBid = tick?.bid ? parseFloat(tick.bid) : null;
+  const liveAsk = tick?.ask ? parseFloat(tick.ask) : null;
+  const spreadVal = tick?.spread ? parseFloat(tick.spread) : null;
 
   return (
     <div className="space-y-4">
@@ -114,6 +116,8 @@ export function MarketPage() {
       <CandlestickChart
         data={candles}
         livePrice={liveBid}
+        liveAsk={liveAsk}
+        spread={spreadVal}
         symbol="XAUUSD"
         timeframe={timeframe}
         onTimeframeChange={(tf) => setTimeframe(tf)}
