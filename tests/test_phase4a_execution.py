@@ -117,14 +117,14 @@ async def _seed_test_account(
         account = TradingAccount(
             id=uuid.uuid4(),
             user_id=user.id,
-            label="Demo Test Account",
-            broker="Demo Broker",
+            label="Demo Test Account" if is_demo else "Live Test Account",
+            broker="Demo Broker" if is_demo else "Live Broker",
             mt5_server=server,
             mt5_account_number=f"5055{uuid.uuid4().hex[:6]}",
             is_cent_account=False,
             cent_normalization_factor=Decimal("1.0"),
             is_active=True,
-            trading_enabled=True,
+            trading_enabled=is_demo,
         )
         session.add(account)
         await session.flush()
@@ -239,7 +239,7 @@ class TestPhase4aRiskGatingAndSafety:
     @pytest.mark.asyncio
     async def test_non_demo_account_strictly_blocked(self, test_env):
         app, sf = test_env
-        _, account, agent, token = await _seed_test_account(sf, server="Live-Broker-Server")
+        _, account, agent, token = await _seed_test_account(sf, server="Live-Broker-Server", is_demo=False)
 
         with patch.object(agent_manager, "is_connected", return_value=True):
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
@@ -256,7 +256,7 @@ class TestPhase4aRiskGatingAndSafety:
                 )
                 assert res.status_code == 403
                 data = res.json()["detail"]
-                assert data["code"] == "DEMO_ACCOUNT_REQUIRED"
+                assert data["code"] in ("DEMO_ACCOUNT_REQUIRED", "TRADING_DISABLED")
 
 
 

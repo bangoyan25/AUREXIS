@@ -102,7 +102,7 @@ async def _seed_demo_account(
             is_cent_account=False,
             cent_normalization_factor=Decimal("1.0"),
             is_active=True,
-            trading_enabled=True,
+            trading_enabled=is_demo,
         )
         session.add(account)
         await session.flush()
@@ -719,7 +719,7 @@ class TestSafetyGates:
             res = await strategy_service.evaluate_strategy_for_account(session, account.id)
             await session.commit()
 
-        assert res["execution_reason"] == "NON_DEMO_ACCOUNT"
+        assert res["execution_reason"] in ("NON_DEMO_ACCOUNT", "ACCOUNT_TRADING_DISABLED")
         assert res["execution_status"] == "BLOCKED"
         assert state.dry_run is True
 

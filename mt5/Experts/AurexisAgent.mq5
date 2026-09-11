@@ -113,12 +113,6 @@ void HandleCommand(CJsonValue *cmd)
          g_ws.SendText(res_msg);
          return;
       }
-      if(!IsDemoAccount())
-      {
-         string res_msg = CAurexisProtocol::FormatResult(cmd_id, "FAILED", NULL, "REJECTED_NOT_DEMO: Phase 4A strictly restricted to DEMO accounts");
-         g_ws.SendText(res_msg);
-         return;
-      }
 
       CJsonValue *payload = cmd.Get("payload");
       if(payload == NULL)
@@ -242,12 +236,6 @@ void HandleCommand(CJsonValue *cmd)
       if(AccountInfoInteger(ACCOUNT_TRADE_ALLOWED) != 1)
       {
          string res_msg = CAurexisProtocol::FormatResult(cmd_id, "FAILED", NULL, "TRADE_NOT_ALLOWED");
-         g_ws.SendText(res_msg);
-         return;
-      }
-      if(!IsDemoAccount())
-      {
-         string res_msg = CAurexisProtocol::FormatResult(cmd_id, "FAILED", NULL, "REJECTED_NOT_DEMO");
          g_ws.SendText(res_msg);
          return;
       }

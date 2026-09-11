@@ -309,7 +309,21 @@ export const accountsApi = {
   delete: (id: string, token: string) =>
     apiFetch<void>(`/api/v1/accounts/${id}`, { method: "DELETE", token }),
   getBrokers: (token: string) =>
-    apiFetch<Array<{ id: string; name: string; servers: string[]; supports_cent: boolean }>>("/api/v1/accounts/brokers", { token }),
+    apiFetch<Array<{ id: string; name: string; servers: string[]; supports_cent: boolean; default_symbol?: string; currencies?: string[] }>>("/api/v1/accounts/brokers", { token }),
+  verifyAgent: (id: string, token: string) =>
+    apiFetch<{
+      verified: boolean;
+      status: string;
+      message: string;
+      agent_id?: string;
+      agent_label?: string;
+      terminal_login?: string;
+      expected_login?: string;
+      terminal_server?: string;
+      terminal_currency?: string;
+      trade_allowed?: boolean;
+      is_demo?: boolean;
+    }>(`/api/v1/accounts/${id}/verify-agent`, { method: "POST", token }),
 };
 
 // ── Agents ────────────────────────────────────────────────────────────────────

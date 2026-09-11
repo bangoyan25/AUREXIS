@@ -176,13 +176,13 @@ async def execute_demo_trade(
             detail={"code": "AGENT_OFFLINE", "message": "MT5 Agent is not connected to WebSocket"},
         )
 
-    # 3. DEMO GUARD: Strictly prevent non-demo execution
-    if not _is_confirmed_demo(account):
+    # 3. LIVE TRADING GUARD: Account must either be a confirmed demo OR have trading_enabled activated
+    if not _is_confirmed_demo(account) and not account.trading_enabled:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={
-                "code": "DEMO_ACCOUNT_REQUIRED",
-                "message": "Live execution is strictly blocked in Phase 4A. Account must be a verified DEMO account.",
+                "code": "TRADING_DISABLED",
+                "message": "Live trading is not enabled for this account. Enable trading in Accounts settings.",
             },
         )
 

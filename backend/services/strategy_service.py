@@ -249,16 +249,16 @@ async def evaluate_strategy_for_account(
         result["execution_reason"] = "ACCOUNT_INACTIVE"
         return result
 
-    # Gate 3: If execution mode, DEMO guard
-    if not state.dry_run and not _is_confirmed_demo(account):
+    # Gate 3: Live trading authorization guard: allowed for confirmed demo OR trading_enabled accounts
+    if not state.dry_run and not _is_confirmed_demo(account) and not account.trading_enabled:
         state.enabled = False
         state.dry_run = True
         await session.flush()
-        logger.critical(
-            "strategy.live_execution_blocked_non_demo",
+        logger.warning(
+            "strategy.live_execution_blocked_disabled_account",
             account_id=str(account_id),
         )
-        result["execution_reason"] = "NON_DEMO_ACCOUNT"
+        result["execution_reason"] = "ACCOUNT_TRADING_DISABLED"
         result["execution_status"] = "BLOCKED"
         return result
 
