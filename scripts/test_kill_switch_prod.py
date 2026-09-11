@@ -5,9 +5,9 @@ import uuid
 from sqlalchemy import select
 
 from backend.db.models.risk import RiskConfiguration
+from backend.db.models.strategy import StrategyEngineState
 from backend.db.session import AsyncSessionLocal
 from backend.services.risk_gate import evaluate_risk_gate
-from backend.services.strategy_service import get_strategy_state
 
 ACCOUNT_ID_STR = "26597c4f-19a0-41d3-85f7-ae6197cc31fb"
 
@@ -31,6 +31,7 @@ async def test_kill_switch() -> None:
         cfg = res.scalar_one_or_none()
         if cfg is None:
             import datetime
+
             cfg = RiskConfiguration(
                 account_id=acct_id,
                 version=1,
@@ -72,13 +73,18 @@ async def test_kill_switch() -> None:
 
     # 6. Verify strategy is still disabled (no auto-resume)
     async with AsyncSessionLocal() as session:
-        state = await get_strategy_state(session, acct_id)
+        res = await session.execute(
+            select(StrategyEngineState)
+            .where(StrategyEngineState.account_id == acct_id)
+            .limit(1)
+        )
+        state = res.scalar_one_or_none()
     if state:
         print(f"6. Strategy state after KS disarm: enabled={state.enabled}")
         assert not state.enabled, "Strategy must NOT auto-resume after KS disarm"
         print("6. Strategy correctly remains DISABLED after KS disarm.")
     else:
-        print("6. No strategy state found (never enabled) — acceptable.")
+        print("6. No strategy state found in DB (never enabled) — acceptable.")
 
     print("\nALL KILL SWITCH CHECKS PASSED.")
 
