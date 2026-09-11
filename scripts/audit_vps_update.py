@@ -144,50 +144,65 @@ def run_audit():
         if reg_resp.status_code != 201:
             failures.append(f"Registration failed: {reg_resp.status_code} {reg_resp.text}")
         else:
-            tok = reg_resp.json()["access_token"]
-            hdrs = {"Authorization": f"Bearer {tok}"}
-            me_resp = httpx.get("http://127.0.0.1:8000/api/v1/auth/me", headers=hdrs, timeout=5.0)
-            user_data = me_resp.json()
-            print(f"  + User tier verified: {user_data.get('tier')} (expected 1)")
-            if user_data.get("tier") != 1:
-                failures.append("User tier is not 1")
+            reg_data = reg_resp.json()
+            print(f"  + User tier directly from register: {reg_data.get('tier')} (expected 1)")
+            if reg_data.get("tier") != 1:
+                failures.append("Registered user tier is not 1")
 
-            # Account 1 creation (should succeed)
-            acc1 = httpx.post(
-                "http://127.0.0.1:8000/api/v1/accounts",
-                headers=hdrs,
-                json={"broker_name": "Exness", "account_number": f"ex_{uid}_1", "account_type": "CENT", "currency": "USDC"},
+            # Login to get bearer token
+            login_resp = httpx.post(
+                "http://127.0.0.1:8000/api/v1/auth/login",
+                json={"email": test_email, "password": "Password123!Safe"},
                 timeout=5.0,
             )
-            print(f"  + Account 1 creation (Exness Cent) -> Status {acc1.status_code}")
-            if acc1.status_code != 201:
-                failures.append(f"Account 1 creation failed: {acc1.status_code} {acc1.text}")
+            print(f"  + POST /api/v1/auth/login -> Status {login_resp.status_code}")
+            if login_resp.status_code != 200:
+                failures.append(f"Login failed: {login_resp.status_code} {login_resp.text}")
+            else:
+                tok = login_resp.json()["access_token"]
+                hdrs = {"Authorization": f"Bearer {tok}"}
+                me_resp = httpx.get("http://127.0.0.1:8000/api/v1/auth/me", headers=hdrs, timeout=5.0)
+                user_data = me_resp.json()
+                print(f"  + GET /api/v1/auth/me tier verified: {user_data.get('tier')} (expected 1)")
+                if user_data.get("tier") != 1:
+                    failures.append("User tier is not 1")
 
-            # Account 2 creation (should fail under Tier 1 limit)
-            acc2 = httpx.post(
-                "http://127.0.0.1:8000/api/v1/accounts",
-                headers=hdrs,
-                json={"broker_name": "HFM", "account_number": f"hfm_{uid}_2", "account_type": "STANDARD", "currency": "USD"},
-                timeout=5.0,
-            )
-            print(f"  + Account 2 creation (Tier 1 limit check) -> Status {acc2.status_code}, detail: {acc2.json().get('detail')}")
-            if acc2.status_code != 403:
-                failures.append(f"Account 2 should be rejected 403, got {acc2.status_code}")
+                # Account 1 creation (should succeed)
+                acc1 = httpx.post(
+                    "http://127.0.0.1:8000/api/v1/accounts",
+                    headers=hdrs,
+                    json={"broker_name": "Exness", "account_number": f"ex_{uid}_1", "account_type": "CENT", "currency": "USDC"},
+                    timeout=5.0,
+                )
+                print(f"  + Account 1 creation (Exness Cent) -> Status {acc1.status_code}")
+                if acc1.status_code != 201:
+                    failures.append(f"Account 1 creation failed: {acc1.status_code} {acc1.text}")
 
-            # Duplicate code reuse check
-            dup_reg = httpx.post(
-                "http://127.0.0.1:8000/api/v1/auth/register",
-                json={
-                    "email": f"dup_{uid}@aurexis.web.id",
-                    "password": "Password123!Safe",
-                    "full_name": "Dup User",
-                    "serial_code": fresh_code,
-                },
-                timeout=5.0,
-            )
-            print(f"  + Duplicate serial reuse rejection -> Status {dup_reg.status_code}, detail: {dup_reg.json().get('detail')}")
-            if dup_reg.status_code != 400:
-                failures.append(f"Duplicate serial should be rejected 400, got {dup_reg.status_code}")
+                # Account 2 creation (should fail under Tier 1 limit)
+                acc2 = httpx.post(
+                    "http://127.0.0.1:8000/api/v1/accounts",
+                    headers=hdrs,
+                    json={"broker_name": "HFM", "account_number": f"hfm_{uid}_2", "account_type": "STANDARD", "currency": "USD"},
+                    timeout=5.0,
+                )
+                print(f"  + Account 2 creation (Tier 1 limit check) -> Status {acc2.status_code}, detail: {acc2.json().get('detail')}")
+                if acc2.status_code != 403:
+                    failures.append(f"Account 2 should be rejected 403, got {acc2.status_code}")
+
+                # Duplicate code reuse check
+                dup_reg = httpx.post(
+                    "http://127.0.0.1:8000/api/v1/auth/register",
+                    json={
+                        "email": f"dup_{uid}@aurexis.web.id",
+                        "password": "Password123!Safe",
+                        "full_name": "Dup User",
+                        "serial_code": fresh_code,
+                    },
+                    timeout=5.0,
+                )
+                print(f"  + Duplicate serial reuse rejection -> Status {dup_reg.status_code}, detail: {dup_reg.json().get('detail')}")
+                if dup_reg.status_code != 400:
+                    failures.append(f"Duplicate serial should be rejected 400, got {dup_reg.status_code}")
     except Exception as e:
         failures.append(f"Registration/Tier flow error: {e}")
 
