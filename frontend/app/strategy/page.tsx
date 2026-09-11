@@ -1,3 +1,4 @@
+import { AppShell } from "@/components/layout/AppShell";
 import { StrategyPage } from "@/features/strategy/StrategyPage";
 
 export const metadata = {
@@ -6,5 +7,9 @@ export const metadata = {
 };
 
 export default function StrategyRoute() {
-  return <StrategyPage />;
+  return (
+    <AppShell>
+      <StrategyPage />
+    </AppShell>
+  );
 }

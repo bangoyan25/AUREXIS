@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { Panel, EmptyState, Badge } from "@/components/ui/primitives";
 import { useStrategy } from "@/lib/hooks/useStrategy";
 import { useSelectedAccount } from "@/lib/account-context";
@@ -53,8 +54,30 @@ export function StrategyPage() {
   if (!selectedAccountId) {
     return (
       <div className="space-y-4">
-        <h1 className="text-xs font-medium uppercase tracking-widest text-aurexis-subtle">Strategy Engine</h1>
-        <EmptyState title="No account selected" description="Select a trading account." />
+        <div>
+          <h1 className="text-xs font-medium uppercase tracking-widest text-aurexis-subtle">
+            Strategy Engine
+          </h1>
+          <p className="text-2xs text-aurexis-faint mt-0.5">
+            Server-side intelligence. Signal ≠ Order ≠ Position.
+          </p>
+        </div>
+        <Panel title="Account Status">
+          <div className="p-6 text-center space-y-3">
+            <EmptyState
+              title="No Trading Account Selected"
+              description="An active trading account is required to initialize the Strategy Engine."
+            />
+            <div className="pt-2">
+              <Link
+                href="/accounts"
+                className="inline-block px-4 py-2 bg-aurexis-accent text-aurexis-bg font-semibold text-xs uppercase tracking-wider rounded hover:bg-aurexis-accent/90 transition-colors"
+              >
+                Go to Accounts Management →
+              </Link>
+            </div>
+          </div>
+        </Panel>
       </div>
     );
   }
