@@ -40,7 +40,7 @@ from backend.services.broker_adapter import (
 )
 from backend.services.license import check_user_can_create_account
 from backend.ws.agent_manager import agent_manager
-from backend.ws.agent_protocol import CommandMessage
+from backend.ws.agent_protocol import CommandMessage, CommandPayload
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -278,9 +278,11 @@ async def verify_agent(
         delivered = await agent_manager.send_json(
             agent_id_str,
             CommandMessage(
-                id=str(cmd.id),
-                command_type="GET_STATUS",
-                payload={},
+                command=CommandPayload(
+                    id=str(cmd.id),
+                    command_type="GET_STATUS",
+                    payload={},
+                )
             ).model_dump(),
         )
 

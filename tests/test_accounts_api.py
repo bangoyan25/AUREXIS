@@ -149,3 +149,24 @@ class TestAccounts:
         token = _register_and_login(client)
         r = client.post("/api/v1/accounts", json={**TEST_ACCOUNT, "cent_normalization_factor": "-0.01"}, headers={"Authorization": f"Bearer {token}"})
         assert r.status_code == 422
+
+    def test_patch_trading_enabled(self, client):
+        token = _register_and_login(client)
+        create_r = client.post("/api/v1/accounts", json=TEST_ACCOUNT, headers={"Authorization": f"Bearer {token}"})
+        aid = create_r.json()["id"]
+        assert create_r.json()["trading_enabled"] is False
+
+        r = client.patch(f"/api/v1/accounts/{aid}", json={"trading_enabled": True}, headers={"Authorization": f"Bearer {token}"})
+        assert r.status_code == 200
+        assert r.json()["trading_enabled"] is True
+
+    def test_verify_agent_no_agent(self, client):
+        token = _register_and_login(client)
+        create_r = client.post("/api/v1/accounts", json=TEST_ACCOUNT, headers={"Authorization": f"Bearer {token}"})
+        aid = create_r.json()["id"]
+
+        r = client.post(f"/api/v1/accounts/{aid}/verify-agent", headers={"Authorization": f"Bearer {token}"})
+        assert r.status_code == 200
+        data = r.json()
+        assert data["verified"] is False
+        assert data["status"] == "NO_AGENT"
