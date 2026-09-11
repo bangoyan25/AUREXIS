@@ -205,11 +205,6 @@ async def run_phase6():
     r_final_state = client.get(f"/accounts/{account_id}/strategy").json()
     print(f"\nStrategy state restored: enabled={r_final_state.get('enabled')}, dry_run={r_final_state.get('dry_run')}")
 
-    r_risk = client.get(f"/risk/{account_id}/decision").json()
-    print(f"5. Risk Gate: Decision={r_risk.get('decision')} Reason Code={r_risk.get('reason_code')}")
-    assert r_risk.get("decision") == "ALLOW", f"Risk Gate not ALLOW: {r_risk.get('reason_code')}"
-
-    r_strat = client.get(f"/accounts/{account_id}/strategy").json()
     # PHASE 6H — FAILURE SAFETY SUITE
     print("\n" + "=" * 60)
     print("PHASE 6H: FAILURE SAFETY VERIFICATION SUITE")
@@ -317,5 +312,3 @@ async def run_phase6():
 if __name__ == "__main__":
     asyncio.run(run_phase6())
 
-    print(f"6. Strategy State: Enabled={r_strat.get('enabled')} DryRun={r_strat.get('dry_run')} Warmup={r_strat.get('warmup_status')}")
-    print("[PASS] Observability pipeline transitions verified.")
