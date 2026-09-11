@@ -24,17 +24,18 @@ async def run_phase6():
     print("AUREXIS PHASE 6: NATURAL DEMO STRATEGY EXECUTION VALIDATION")
     print("=" * 60)
 
-    # Resolve target demo account
+    # Resolve target demo account connected to MT5 agent
     async with AsyncSessionLocal() as db:
-        res = await db.execute(select(TradingAccount))
-        accounts = res.scalars().all()
-        target = None
-        for a in accounts:
-            if a.is_active and "demo" in (a.mt5_server or "").lower():
-                target = a
-                break
+        from backend.db.models.mt5_agent import MT5Agent
+        agent_res = await db.execute(select(MT5Agent).where(MT5Agent.is_active.is_(True)))
+        agent = agent_res.scalars().first()
+        if agent is not None and agent.account_id:
+            target = await db.get(TradingAccount, agent.account_id)
+        else:
+            target = None
+
         if target is None:
-            print("[FAIL] No active demo account found!")
+            print("[FAIL] No active demo account with MT5 agent found!")
             sys.exit(1)
 
         account_id = target.id
