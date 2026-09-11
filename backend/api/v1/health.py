@@ -66,12 +66,8 @@ def _market_data_status() -> dict[str, object]:
 
 
 def _news_status() -> dict[str, object]:
-    if not settings.NEWS_PROVIDER:
-        return {
-            "status": "NOT_CONFIGURED",
-            "note": "News provider is UNDEFINED — awaiting specification.",
-        }
-    return {"status": "CONFIGURED", "provider": settings.NEWS_PROVIDER}
+    provider = settings.NEWS_PROVIDER or "FOREXFACTORY"
+    return {"status": "CONFIGURED", "provider": provider}
 
 
 def _brain_status() -> dict[str, object]:

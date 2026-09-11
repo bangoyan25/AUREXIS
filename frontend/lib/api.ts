@@ -231,6 +231,33 @@ export interface PerformanceResponse {
 export interface BacktestResponse {
   status: string;
   note: string;
+  symbol?: string;
+  timeframe?: string;
+  initial_balance_usd?: string;
+  final_balance_usd?: string;
+  total_net_pnl_usd?: string;
+  total_trades?: number;
+  winning_trades?: number;
+  losing_trades?: number;
+  win_rate_pct?: string;
+  profit_factor?: string;
+  max_drawdown_usd?: string;
+  max_drawdown_pct?: string;
+  expectancy_usd?: string;
+  disclaimer?: string;
+  trades?: Array<{
+    trade_id: string;
+    symbol: string;
+    side: string;
+    entry_time: string;
+    entry_price: string;
+    volume_lots: string;
+    exit_time: string | null;
+    exit_price: string | null;
+    realized_pnl_usd: string;
+    exit_reason: string | null;
+  }>;
+  equity_curve?: Array<{ time: string; equity: number }>;
   results: unknown[];
 }
 
@@ -382,6 +409,12 @@ export const performanceApi = {
 export const backtestApi = {
   get: (token: string) =>
     apiFetch<BacktestResponse>("/api/v1/backtest", { token }),
+  run: (token: string, body?: object) =>
+    apiFetch<BacktestResponse>("/api/v1/backtest/run", {
+      method: "POST",
+      body: body ? JSON.stringify(body) : JSON.stringify({}),
+      token,
+    }),
 };
 
 // ── Strategy Engine ──────────────────────────────────────────────────────────

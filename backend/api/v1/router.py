@@ -16,9 +16,11 @@ from backend.api.v1 import (
     agent_ws,
     agents,
     auth,
+    backtest_routes,
     execution_routes,
     health,
     market_data_routes,
+    news_routes,
     strategy_routes,
     stubs,
     websocket,
@@ -56,6 +58,12 @@ router.include_router(agent_ws.router, prefix="")
 
 # Market data & Risk gate observability
 router.include_router(market_data_routes.router, prefix="")
+
+# Macroeconomic news & blackout protection
+router.include_router(news_routes.router, prefix="")
+
+# Historical Backtest simulation engine
+router.include_router(backtest_routes.router, prefix="")
 
 
 # Strategy engine (Phase 4B)

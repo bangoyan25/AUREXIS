@@ -345,8 +345,7 @@ async def get_closed_bars(
             account_id=account_id_str,
         )
 
-    # Fallback to active market symbol bars
-    return await get_symbol_closed_bars(norm_symbol, norm_tf)
+    return []
 
 
 def aggregate_bars(m15_bars: list[dict[str, Any]], target_tf: str) -> list[dict[str, Any]]:

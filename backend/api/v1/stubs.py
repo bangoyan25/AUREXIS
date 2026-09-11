@@ -335,22 +335,6 @@ async def list_commands(
     }
 
 
-# ── News ──────────────────────────────────────────────────────────────────
-
-@router.get("/news")
-async def get_news_state(
-    _user: Annotated[str, Depends(get_current_user)],
-) -> dict[str, Any]:
-    return {
-        "status": "UNKNOWN",
-        "provider": None,
-        "upcoming_events": [],
-        "pre_event_window_minutes": 30,
-        "post_event_window_minutes": 30,
-        "note": _NOTE_NEWS,
-    }
-
-
 # ── Performance ───────────────────────────────────────────────────────────
 
 @router.get("/performance")
@@ -408,18 +392,3 @@ async def get_performance(
         "note": "No trade history available.",
     }
 
-
-# ── Backtest ──────────────────────────────────────────────────────────────
-
-@router.get("/backtest")
-async def get_backtest(
-    _user: Annotated[str, Depends(get_current_user)],
-) -> dict[str, Any]:
-    return {
-        "status": _NC,
-        "note": (
-            "Backtest engine is NOT_CONFIGURED. "
-            "Strategy parameters must be finalized before backtesting."
-        ),
-        "results": [],
-    }

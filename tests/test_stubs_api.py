@@ -104,13 +104,13 @@ class TestDomainStubs:
         assert r.status_code == 200
         assert r.json()["commands"] == []
 
-    def test_news_unknown(self, client):
+    def test_news_state(self, client):
         tok = _token(client)
         r = client.get("/api/v1/news", headers={"Authorization": f"Bearer {tok}"})
         assert r.status_code == 200
         d = r.json()
-        assert d["status"] == "UNKNOWN"
-        assert d["provider"] is None
+        assert d["status"] in ("CLEAR", "UPCOMING", "BLACKOUT", "UNKNOWN")
+        assert "provider" in d
 
     def test_performance_empty(self, client):
         tok = _token(client)
@@ -118,11 +118,15 @@ class TestDomainStubs:
         assert r.status_code == 200
         assert r.json()["total_trades"] == 0
 
-    def test_backtest_not_configured(self, client):
+    def test_backtest_execution(self, client):
         tok = _token(client)
         r = client.get("/api/v1/backtest", headers={"Authorization": f"Bearer {tok}"})
         assert r.status_code == 200
-        assert r.json()["status"] == "NOT_CONFIGURED"
+        d = r.json()
+        assert d["status"] == "OK"
+        assert d["symbol"] == "XAUUSD"
+        assert "total_trades" in d
+        assert "win_rate_pct" in d
 
     def test_stubs_require_auth(self, client):
         for path in ["/api/v1/signals", "/api/v1/positions", "/api/v1/news"]:
