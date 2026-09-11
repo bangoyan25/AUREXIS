@@ -57,7 +57,7 @@ async def get_latest_risk_config(session: AsyncSession, account_id: uuid.UUID) -
         news_pre_event_window_minutes=db_config.news_pre_event_window_minutes,
         news_post_event_window_minutes=db_config.news_post_event_window_minutes,
         daily_reset_timezone=db_config.daily_reset_timezone,
-        emergency_stop_active=False,
+        emergency_stop_active=getattr(db_config, "kill_switch_active", False),
     )
 
 

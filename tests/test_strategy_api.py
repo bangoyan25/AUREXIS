@@ -519,3 +519,141 @@ class TestEvaluateStrategy:
         assert data["execution_status"] != "EXECUTION_PENDING"
         assert data.get("execution_reason") is not None
 
+
+class TestKillSwitch:
+    """Kill switch tests — DB persistence, API, and strategy engine auto-disable."""
+
+    @pytest.mark.asyncio
+    async def test_get_kill_switch_default_disarmed(self, test_env):
+        app, sf = test_env
+        _, account, _, token = await _seed_demo_account(sf, "ks1@example.com")
+
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            res = await c.get(
+                f"/api/v1/accounts/{account.id}/strategy/kill-switch",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+        assert res.status_code == 200
+        data = res.json()
+        assert data["kill_switch_active"] is False
+        assert data["status"] == "DISARMED"
+
+    @pytest.mark.asyncio
+    async def test_activate_kill_switch(self, test_env):
+        app, sf = test_env
+        _, account, _, token = await _seed_demo_account(sf, "ks2@example.com")
+
+        # First enable strategy
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            await c.post(
+                f"/api/v1/accounts/{account.id}/strategy/enable",
+                headers={"Authorization": f"Bearer {token}"},
+                json={"dry_run": True},
+            )
+            # Engage kill switch
+            res = await c.post(
+                f"/api/v1/accounts/{account.id}/strategy/kill-switch",
+                headers={"Authorization": f"Bearer {token}"},
+                json={"active": True},
+            )
+        assert res.status_code == 200
+        data = res.json()
+        assert data["kill_switch_active"] is True
+        assert data["status"] == "ACTIVE"
+
+        # Verify strategy is automatically disabled
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            st_res = await c.get(
+                f"/api/v1/accounts/{account.id}/strategy",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+        assert st_res.json()["enabled"] is False
+
+    @pytest.mark.asyncio
+    async def test_disarm_kill_switch(self, test_env):
+        app, sf = test_env
+        _, account, _, token = await _seed_demo_account(sf, "ks3@example.com")
+
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            # Arm
+            await c.post(
+                f"/api/v1/accounts/{account.id}/strategy/kill-switch",
+                headers={"Authorization": f"Bearer {token}"},
+                json={"active": True},
+            )
+            # Disarm
+            res = await c.post(
+                f"/api/v1/accounts/{account.id}/strategy/kill-switch",
+                headers={"Authorization": f"Bearer {token}"},
+                json={"active": False},
+            )
+        assert res.status_code == 200
+        data = res.json()
+        assert data["kill_switch_active"] is False
+        assert data["status"] == "DISARMED"
+
+    @pytest.mark.asyncio
+    async def test_kill_switch_tenant_isolation(self, test_env):
+        app, sf = test_env
+        _, account_a, _, _ = await _seed_demo_account(sf, "ks_a@example.com")
+        _, _, _, token_b = await _seed_demo_account(sf, "ks_b@example.com")
+
+        # Tenant B tries to activate Account A's kill switch -> 404
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            res = await c.post(
+                f"/api/v1/accounts/{account_a.id}/strategy/kill-switch",
+                headers={"Authorization": f"Bearer {token_b}"},
+                json={"active": True},
+            )
+        assert res.status_code == 404
+
+
+class TestLicenseService:
+    """License skeleton entitlement checks."""
+
+    @pytest.mark.asyncio
+    async def test_default_dev_mode_permits_all_features(self, test_env):
+        _, sf = test_env
+        from backend.services.license_service import LicenseService
+
+        async with sf() as session:
+            svc = LicenseService(session)
+            assert await svc.is_feature_enabled("strategy_engine") is True
+            assert await svc.is_feature_enabled("brain") is True
+            assert await svc.is_feature_enabled("backtest") is True
+
+    @pytest.mark.asyncio
+    async def test_revoked_license_denied(self, test_env):
+        _, sf = test_env
+        from backend.db.models.license import License
+        from backend.services.license_service import LicenseService
+
+        async with sf() as session:
+            lic = License(license_key="revoked-test-key", revoked=True)
+            session.add(lic)
+            await session.commit()
+
+            svc = LicenseService(session)
+            assert await svc.is_feature_enabled("strategy_engine", "revoked-test-key") is False
+
+    @pytest.mark.asyncio
+    async def test_valid_license_allows_configured_features(self, test_env):
+        _, sf = test_env
+        from backend.db.models.license import License
+        from backend.services.license_service import LicenseService
+
+        async with sf() as session:
+            lic = License(
+                license_key="pro-license-123",
+                feature_strategy_engine=True,
+                feature_brain=True,
+                feature_multi_account=False,
+            )
+            session.add(lic)
+            await session.commit()
+
+            svc = LicenseService(session)
+            assert await svc.is_feature_enabled("strategy_engine", "pro-license-123") is True
+            assert await svc.is_feature_enabled("multi_account", "pro-license-123") is False
+
+

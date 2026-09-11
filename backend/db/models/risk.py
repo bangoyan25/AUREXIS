@@ -70,6 +70,7 @@ class RiskConfiguration(ImmutableTimestampMixin, Base):
     max_open_lots: Mapped[Decimal | None] = mapped_column(Numeric(precision=18, scale=8), nullable=True)
     max_spread_usd: Mapped[Decimal | None] = mapped_column(Numeric(precision=18, scale=8), nullable=True)
     risk_per_trade_pct: Mapped[Decimal | None] = mapped_column(Numeric(precision=18, scale=8), nullable=True)
+    kill_switch_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     # Relationships
     account = relationship("TradingAccount")

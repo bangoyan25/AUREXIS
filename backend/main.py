@@ -69,11 +69,24 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 note="Backend will start but cache/realtime features will fail.",
             )
 
+        # Start Strategy Engine background worker
+        try:
+            from backend.services.strategy_worker import start_worker
+            start_worker()
+        except Exception as exc:
+            logger.warning("aurexis.strategy_worker_start_failed", error=str(exc))
+
     logger.info("aurexis.started")
     yield
 
     # ── Shutdown ─────────────────────────────────────────────────────────
     logger.info("aurexis.shutting_down")
+    try:
+        from backend.services.strategy_worker import stop_worker
+        stop_worker()
+    except Exception as exc:
+        logger.warning("aurexis.strategy_worker_stop_failed", error=str(exc))
+
     await close_redis_pools()
     from backend.db.session import engine
     await engine.dispose()

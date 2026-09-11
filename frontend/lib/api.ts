@@ -357,6 +357,86 @@ export const backtestApi = {
     apiFetch<BacktestResponse>("/api/v1/backtest", { token }),
 };
 
+// ── Strategy Engine ──────────────────────────────────────────────────────────
+
+export interface StrategyStateResponse {
+  account_id: string;
+  enabled: boolean;
+  dry_run: boolean;
+  strategy_id: string;
+  strategy_version: string;
+  symbol: string;
+  timeframe: string;
+  last_signal_direction: string | null;
+  last_signal_at: string | null;
+  last_signal_candle_ts: string | null;
+  last_signal_reason: string | null;
+  last_risk_decision: string | null;
+  last_risk_reason_code: string | null;
+  last_execution_status: string | null;
+}
+
+export interface StrategyEvaluateResponse {
+  account_id: string;
+  timestamp: string;
+  signal_direction: string;
+  signal_reason: string | null;
+  risk_decision: string | null;
+  risk_reason_code: string | null;
+  execution_status: string;
+  execution_reason: string | null;
+  dry_run: boolean;
+  candle_ts: string | null;
+  signal_id: string | null;
+  command_id?: string | null;
+}
+
+export interface LatestSignalResponse {
+  signal_id: string;
+  account_id: string;
+  symbol: string;
+  direction: string;
+  status: string;
+  strategy_id: string;
+  strategy_version: string;
+  generated_at: string;
+  candle_ts: string | null;
+  confidence_score: string | null;
+}
+
+export const strategyApi = {
+  getState: (accountId: string, token: string) =>
+    apiFetch<StrategyStateResponse>(`/api/v1/accounts/${accountId}/strategy`, { token }),
+  enable: (accountId: string, dry_run: boolean, token: string) =>
+    apiFetch<StrategyStateResponse>(`/api/v1/accounts/${accountId}/strategy/enable`, {
+      method: "POST",
+      body: JSON.stringify({ dry_run }),
+      token,
+    }),
+  disable: (accountId: string, token: string) =>
+    apiFetch<StrategyStateResponse>(`/api/v1/accounts/${accountId}/strategy/disable`, {
+      method: "POST",
+      token,
+    }),
+  evaluate: (accountId: string, token: string) =>
+    apiFetch<StrategyEvaluateResponse>(`/api/v1/accounts/${accountId}/strategy/evaluate`, {
+      method: "POST",
+      token,
+    }),
+  getLatestSignal: (accountId: string, token: string) =>
+    apiFetch<LatestSignalResponse>(`/api/v1/accounts/${accountId}/strategy/signals/latest`, { token }),
+  getKillSwitch: (accountId: string, token: string) =>
+    apiFetch<{ account_id: string; kill_switch_active: boolean; status: string }>(
+      `/api/v1/accounts/${accountId}/strategy/kill-switch`, { token }
+    ),
+  setKillSwitch: (accountId: string, active: boolean, token: string) =>
+    apiFetch<{ account_id: string; kill_switch_active: boolean; status: string }>(
+      `/api/v1/accounts/${accountId}/strategy/kill-switch`,
+      { method: "POST", body: JSON.stringify({ active }), token }
+    ),
+};
+
+
 export interface TestExecutionPayload {
   action: "OPEN_POSITION" | "CLOSE_POSITION";
   symbol?: string;

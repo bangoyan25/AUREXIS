@@ -23,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.deps import get_current_user
 from backend.db.models.account import TradingAccount
+from backend.db.models.risk import RiskConfiguration
 from backend.db.models.signal import CandidateSignal as DbCandidateSignal
 from backend.db.session import get_db
 from backend.services import strategy_service
@@ -260,3 +261,96 @@ async def get_latest_signal(
             expires_at=sig.expires_at.isoformat() if sig.expires_at is not None else None,
         ),
     )
+
+
+class KillSwitchRequest(BaseModel):
+    active: bool = Field(..., description="True to block all trading; False to resume")
+
+
+class KillSwitchResponse(BaseModel):
+    account_id: str
+    kill_switch_active: bool
+    status: str
+
+
+@router.get(
+    "/accounts/{account_id}/strategy/kill-switch",
+    response_model=KillSwitchResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Get kill switch status for account",
+)
+async def get_kill_switch(
+    account_id: str,
+    user_id: Annotated[str, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> KillSwitchResponse:
+    account = await _verify_account_ownership(db, account_id, user_id)
+    res = await db.execute(
+        select(RiskConfiguration)
+        .where(RiskConfiguration.account_id == account.id)
+        .order_by(RiskConfiguration.version.desc())
+        .limit(1)
+    )
+    risk_cfg = res.scalar_one_or_none()
+    active = risk_cfg.kill_switch_active if risk_cfg else False
+    return KillSwitchResponse(
+        account_id=str(account.id),
+        kill_switch_active=active,
+        status="ACTIVE" if active else "DISARMED",
+    )
+
+
+@router.post(
+    "/accounts/{account_id}/strategy/kill-switch",
+    response_model=KillSwitchResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Activate or disarm account kill switch",
+)
+async def set_kill_switch(
+    account_id: str,
+    body: KillSwitchRequest,
+    user_id: Annotated[str, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> KillSwitchResponse:
+    """Activates or disarms the account kill switch.
+
+    When active=True:
+      - Sets kill_switch_active=True on RiskConfiguration.
+      - Next RiskGate check will immediately BLOCK any execution.
+      - Automatically disables the strategy engine for this account.
+    """
+    account = await _verify_account_ownership(db, account_id, user_id)
+
+    res = await db.execute(
+        select(RiskConfiguration)
+        .where(RiskConfiguration.account_id == account.id)
+        .order_by(RiskConfiguration.version.desc())
+        .limit(1)
+    )
+    risk_cfg = res.scalar_one_or_none()
+
+    if risk_cfg is None:
+        import datetime
+        risk_cfg = RiskConfiguration(
+            account_id=account.id,
+            version=1,
+            effective_from=datetime.datetime.now(datetime.timezone.utc),
+            kill_switch_active=body.active,
+        )
+        db.add(risk_cfg)
+    else:
+        risk_cfg.kill_switch_active = body.active
+
+    # When engaging kill switch, also disable strategy engine
+    if body.active:
+        await strategy_service.disable_strategy(session=db, account_id=account.id)
+
+    await db.commit()
+    await db.refresh(risk_cfg)
+
+    return KillSwitchResponse(
+        account_id=str(account.id),
+        kill_switch_active=risk_cfg.kill_switch_active,
+        status="ACTIVE" if risk_cfg.kill_switch_active else "DISARMED",
+    )
+

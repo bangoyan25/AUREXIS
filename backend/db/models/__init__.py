@@ -9,6 +9,7 @@ from backend.db.models.agent_command import MT5AgentCommand  # noqa: F401
 from backend.db.models.audit_log import AuditLog  # noqa: F401
 from backend.db.models.equity import DailySessionState, EquitySnapshot  # noqa: F401
 from backend.db.models.execution import ExecutionCommand, ExecutionReport, Position  # noqa: F401
+from backend.db.models.license import License  # noqa: F401
 from backend.db.models.mt5_agent import MT5Agent  # noqa: F401
 from backend.db.models.news import NewsEvent  # noqa: F401
 from backend.db.models.refresh_token import RefreshToken  # noqa: F401

@@ -115,6 +115,10 @@ class Settings(BaseSettings):
     RISK_MAX_OPEN_POSITIONS: int | None = None              # UNDEFINED
     RISK_DEFAULT_POSITION_SIZE_LOTS: Decimal | None = None  # UNDEFINED
 
+    # ── Strategy Worker ──────────────────────────────────────────────────
+    STRATEGY_WORKER_ENABLED: bool = True
+    STRATEGY_WORKER_INTERVAL_SEC: float = 5.0
+
     # ── Frontend ───────────────────────────────────────────────────────────
     NEXT_PUBLIC_API_URL: str = "http://localhost:8000"
     NEXT_PUBLIC_API_BASE_URL: str | None = Field(

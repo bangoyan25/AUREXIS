@@ -20,6 +20,7 @@ const NAV: NavSection[] = [
       { href: "/market",    label: "Market" },
       { href: "/positions", label: "Positions" },
       { href: "/signals",   label: "Signals" },
+      { href: "/strategy",  label: "Strategy Engine" },
       { href: "/execution", label: "Execution" },
     ],
   },
@@ -74,7 +75,7 @@ export function Sidebar() {
               AUREXIS
             </span>
             <span className="text-2xs font-mono tracking-widest text-aurexis-faint uppercase">
-              XAUUSD · HFM
+              XAUUSD · MT5
             </span>
           </div>
         </Link>
