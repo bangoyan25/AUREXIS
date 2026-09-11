@@ -76,11 +76,11 @@ export function MarketPage() {
     void fetchChart();
   }, [fetchChart]);
 
-  // Periodic refresh for new closed bars (every 6 seconds)
+  // Periodic refresh for new closed bars (every 3 seconds)
   useEffect(() => {
     const timer = setInterval(() => {
       void fetchChart();
-    }, 6000);
+    }, 3000);
     return () => clearInterval(timer);
   }, [fetchChart]);
 
@@ -117,7 +117,7 @@ export function MarketPage() {
         symbol="XAUUSD"
         timeframe={timeframe}
         onTimeframeChange={(tf) => setTimeframe(tf)}
-        availableTimeframes={["M5", "M15", "H1", "H4", "D1"]}
+        availableTimeframes={["M1", "M5", "M15", "M30", "H1", "H4", "D1"]}
         isLoading={isLoadingChart}
       />
 

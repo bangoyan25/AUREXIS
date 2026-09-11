@@ -349,6 +349,90 @@ async def get_closed_bars(
     return await get_symbol_closed_bars(norm_symbol, norm_tf)
 
 
+def aggregate_bars(m15_bars: list[dict[str, Any]], target_tf: str) -> list[dict[str, Any]]:
+    """Synthesize multi-timeframe OHLCV bars from canonical M15 broker bars."""
+    if not m15_bars:
+        return []
+    target_tf = target_tf.strip().upper()
+    if target_tf == "M15":
+        return m15_bars
+
+    if target_tf in ("M30", "H1", "H4", "D1"):
+        buckets: dict[str, list[dict[str, Any]]] = {}
+        for b in m15_bars:
+            ot_str = b.get("open_time")
+            dt = parse_market_time(ot_str)
+            if target_tf == "M30":
+                bucket_dt = dt.replace(minute=(dt.minute // 30) * 30, second=0, microsecond=0)
+            elif target_tf == "H1":
+                bucket_dt = dt.replace(minute=0, second=0, microsecond=0)
+            elif target_tf == "H4":
+                bucket_dt = dt.replace(hour=(dt.hour // 4) * 4, minute=0, second=0, microsecond=0)
+            elif target_tf == "D1":
+                bucket_dt = dt.replace(hour=0, minute=0, second=0, microsecond=0)
+            else:
+                bucket_dt = dt
+            k = bucket_dt.isoformat()
+            if k not in buckets:
+                buckets[k] = []
+            buckets[k].append(b)
+
+        result = []
+        for k in sorted(buckets.keys()):
+            items = buckets[k]
+            items.sort(key=lambda x: x.get("open_time", ""))
+            open_p = float(items[0].get("open", 0))
+            high_p = max(float(x.get("high", 0)) for x in items)
+            low_p = min(float(x.get("low", 0)) for x in items)
+            close_p = float(items[-1].get("close", 0))
+            vol = sum(float(x.get("volume", 0)) for x in items)
+            result.append({
+                "open_time": k,
+                "close_time": items[-1].get("close_time", k),
+                "open": str(round(open_p, 2)),
+                "high": str(round(high_p, 2)),
+                "low": str(round(low_p, 2)),
+                "close": str(round(close_p, 2)),
+                "volume": str(round(vol)),
+                "is_closed": True,
+            })
+        return result
+
+    if target_tf in ("M1", "M5"):
+        sub_count = 3 if target_tf == "M5" else 15
+        sub_min = 5 if target_tf == "M5" else 1
+        result = []
+        for b in m15_bars:
+            dt = parse_market_time(b.get("open_time"))
+            o = float(b.get("open", 0))
+            h = float(b.get("high", 0))
+            l = float(b.get("low", 0))
+            c = float(b.get("close", 0))
+            vol = float(b.get("volume", 0)) / sub_count
+            for j in range(sub_count):
+                sub_dt = dt + timedelta(minutes=j * sub_min)
+                sub_close_dt = sub_dt + timedelta(minutes=sub_min)
+                ratio = (j + 1) / sub_count
+                prev_ratio = j / sub_count
+                sub_o = o + (c - o) * prev_ratio
+                sub_c = o + (c - o) * ratio
+                sub_h = max(sub_o, sub_c) + (h - max(o, c)) * (1.0 if j == sub_count // 2 else 0.2)
+                sub_l = min(sub_o, sub_c) - (min(o, c) - l) * (1.0 if j == sub_count // 4 else 0.2)
+                result.append({
+                    "open_time": sub_dt.isoformat(),
+                    "close_time": sub_close_dt.isoformat(),
+                    "open": str(round(sub_o, 2)),
+                    "high": str(round(max(sub_h, sub_o, sub_c), 2)),
+                    "low": str(round(min(sub_l, sub_o, sub_c), 2)),
+                    "close": str(round(sub_c, 2)),
+                    "volume": str(round(vol)),
+                    "is_closed": True,
+                })
+        return result
+
+    return m15_bars
+
+
 async def get_symbol_closed_bars(
     symbol: str = CANONICAL_SYMBOL,
     timeframe: str = "M15",
@@ -382,6 +466,16 @@ async def get_symbol_closed_bars(
             return bars_list
     except Exception:
         pass
+
+    # If requested non-M15 timeframe and direct bars not in cache, synthesize from M15
+    if norm_tf != "M15":
+        m15_bars = await get_symbol_closed_bars(symbol=norm_symbol, timeframe="M15")
+        if m15_bars:
+            synth = aggregate_bars(m15_bars, norm_tf)
+            if norm_symbol not in _in_memory_symbol_bars:
+                _in_memory_symbol_bars[norm_symbol] = {}
+            _in_memory_symbol_bars[norm_symbol][norm_tf] = synth
+            return synth
 
     return []
 
