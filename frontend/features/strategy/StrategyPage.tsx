@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useState } from "react";
 import { Panel, EmptyState, Badge } from "@/components/ui/primitives";
 import { useStrategy } from "@/lib/hooks/useStrategy";
@@ -115,6 +115,31 @@ export function StrategyPage() {
                 <button onClick={handleEvaluate} disabled={strategy.evaluating || !s.enabled} className="px-3 py-1.5 text-xs bg-aurexis-muted text-aurexis-text border border-aurexis-border rounded disabled:opacity-40 disabled:cursor-not-allowed">{strategy.evaluating ? "Evaluating…" : "Evaluate Now"}</button>
               </div>
               {actionMsg && <div className="bg-aurexis-surface border border-aurexis-border rounded px-3 py-2"><p className="text-2xs font-mono text-aurexis-subtle">{actionMsg}</p></div>}
+            </div>
+          </Panel>
+          <Panel title="Kill Switch">
+            <div className="px-4 py-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-aurexis-subtle">Status</span>
+                {strategy.killSwitchActive ? (
+                  <span className="px-2 py-0.5 rounded text-2xs font-bold bg-aurexis-danger/20 text-aurexis-danger border border-aurexis-danger/40">ACTIVE — BLOCKED</span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded text-2xs font-bold bg-aurexis-accent/10 text-aurexis-accent border border-aurexis-accent/30">DISARMED</span>
+                )}
+              </div>
+              <p className="text-2xs text-aurexis-faint">Arm blocks all Risk Gate decisions immediately and disables the strategy engine.</p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={async () => { setActionMsg(null); try { await strategy.setKillSwitch(true); setActionMsg("Kill switch ARMED."); } catch (e: unknown) { setActionMsg(`Error: ${e instanceof Error ? e.message : String(e)}`); } }}
+                  disabled={strategy.killSwitchActive}
+                  className="px-3 py-1.5 text-xs bg-aurexis-danger/20 text-aurexis-danger border border-aurexis-danger/50 rounded hover:bg-aurexis-danger/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >Arm Kill Switch</button>
+                <button
+                  onClick={async () => { setActionMsg(null); try { await strategy.setKillSwitch(false); setActionMsg("Kill switch DISARMED."); } catch (e: unknown) { setActionMsg(`Error: ${e instanceof Error ? e.message : String(e)}`); } }}
+                  disabled={!strategy.killSwitchActive}
+                  className="px-3 py-1.5 text-xs bg-aurexis-muted text-aurexis-text border border-aurexis-border rounded hover:border-aurexis-accent/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >Disarm</button>
+              </div>
             </div>
           </Panel>
         </div>
