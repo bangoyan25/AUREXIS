@@ -18,7 +18,7 @@ export function DashboardShell() {
             AUREXIS
           </span>
           <span className="text-aurexis-subtle text-xs font-mono">
-            XAUUSD · HFM
+            XAUUSD · MT5
           </span>
         </div>
 

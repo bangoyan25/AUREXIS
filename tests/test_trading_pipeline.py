@@ -133,9 +133,9 @@ async def setup_test_account(session: AsyncSession, initial_balance: Decimal = D
         id=uuid.uuid4(),
         user_id=user.id,
         label="Test Pipeline Account",
-        broker="HFM",
+        broker="Demo Broker",
         mt5_account_number="999888",
-        mt5_server="HFM-Cent",
+        mt5_server="Demo-Cent",
         broker_currency="Cent",
         is_cent_account=True,
         cent_normalization_factor=Decimal("0.01"),
@@ -481,7 +481,7 @@ async def test_negative_risk_not_configured(db_session_factory):
         await session.flush()
         account = TradingAccount(
             id=uuid.uuid4(), user_id=user.id, label="NoRiskConfig",
-            broker="HFM", mt5_account_number="00001",
+            broker="Test Broker", mt5_account_number="00001",
             is_cent_account=False, trading_enabled=False,
         )
         session.add(account)

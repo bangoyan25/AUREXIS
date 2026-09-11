@@ -103,7 +103,7 @@ async def test_risk_service_with_db_session(db_session):
     account = TradingAccount(
         user_id=user.id,
         label="Test Risk Account",
-        broker="HFM",
+        broker="Test Broker",
         mt5_account_number="12345678",
         broker_currency="USD",
         cent_normalization_factor=Decimal("1.0"),

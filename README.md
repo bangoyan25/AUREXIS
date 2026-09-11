@@ -10,8 +10,8 @@ The MT5 EA must not independently invent trading decisions or bypass the server-
 
 ## Current scope
 
-- Broker: HFM (initial target)
-- Account model: HFM Cent for testing
+- Broker: Generic MT5 Broker
+- Account model: Standard / Cent account support
 - Instrument: XAUUSD
 - Initial deployment: 1 account
 - Architecture target: scalable to 5+ accounts

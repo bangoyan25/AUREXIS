@@ -32,7 +32,7 @@
 ### 1.4 Monetary Precision & Decimal Policy
 - All monetary amounts, prices, equity balances, and PnL values are stored as **`NUMERIC(18, 8)`** (`sa.Numeric(precision=18, scale=8)`).
 - In Python, all financial fields are mapped to `decimal.Decimal`. **`float` is strictly forbidden** in financial and risk paths to avoid IEEE 754 precision artifacts.
-- Cent accounts (e.g. HFM Cent) are normalized to standard USD representation via `cent_normalization_factor`:
+- Cent accounts (e.g. Standard Cent) are normalized to standard USD representation via `cent_normalization_factor`:
   $$\text{USD Value} = \text{Broker Raw Value} \times \text{cent\_normalization\_factor}$$
   *(e.g., $10{,}000\text{ cents} \times 0.01 = \$100.00\text{ USD}$)*.
 
@@ -95,8 +95,8 @@ Represents an individual MT5 broker account. Serves as the root boundary for ris
 |---|---|---|---|---|
 | `id` | `UUID` | NO | PK, `uuid_generate_v4()` | Unique internal account identifier |
 | `user_id` | `UUID` | NO | FK `users.id` ON DELETE CASCADE | Owning platform operator |
-| `label` | `VARCHAR(100)` | NO | — | Human-readable account label (e.g. "HFM Cent Live") |
-| `broker` | `VARCHAR(100)` | NO | — | Broker name (e.g. "HFM") |
+| `label` | `VARCHAR(100)` | NO | — | Human-readable account label (e.g. "Cent Account 1") |
+| `broker` | `VARCHAR(100)` | NO | — | Broker name (e.g. "Generic Broker") |
 | `mt5_account_number` | `VARCHAR(50)` | NO | Index | MT5 login account number (opaque string) |
 | `mt5_server` | `VARCHAR(200)` | YES | `NULL` | MT5 broker access server name |
 | `broker_currency` | `VARCHAR(20)` | NO | `'USD'` | Currency reported by broker |

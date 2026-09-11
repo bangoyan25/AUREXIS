@@ -1,9 +1,9 @@
 # AUREXIS Risk Engine Production Specification
 
-> **Status:** LOCKED — Owner Decisions Approved 2026-09-06  
+> **Status:** LOCKED ï¿½ Owner Decisions Approved 2026-09-06  
 > **Authority:** Derived from `docs/MASTER_SPECIFICATION.md` v1.0 (LOCKED)  
 > **Initial Instrument:** XAUUSD only  
-> **Initial Broker Target:** HFM (Cent Account / Standard Account)  
+> **Initial Broker Target:** Standard MT5 Broker (Cent Account / Standard Account)  
 > **Initial Account Scope:** 1 Account (Scalable to 5+ Isolated Accounts)  
 > **Mandatory Rule:** All numerical risk parameters and empirical thresholds not explicitly locked are **UNDEFINED**. No agent may invent them.
 
@@ -529,11 +529,11 @@ AUREXIS uses **normalized USD** as authoritative currency for all risk calculati
 
 ### 19.2 Cent Account Conversion
 
-HFM Cent accounts report values in broker-native units (cents). Conversion:
+Cent accounts report values in broker-native units (cents). Conversion:
 
   USD_value = broker_native_value * cent_normalization_factor
 
-For HFM Cent accounts: cent_normalization_factor = 0.01 (10,000 cents = $100 USD).
+For Cent accounts: cent_normalization_factor = 0.01 (10,000 cents = $100 USD).
 For Standard USD accounts: cent_normalization_factor = 1.0.
 Implemented via backend/services/normalization.normalize_broker_to_usd() using Decimal arithmetic exclusively.
 

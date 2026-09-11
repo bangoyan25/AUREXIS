@@ -68,9 +68,9 @@ A target such as $10/day is an optional objective/measurement, not a reason to i
 
 Initial broker target:
 
-**HFM**
+**Standard MT5 Broker**
 
-The first implementation/testing environment may use an HFM Cent account.
+The implementation supports standard MT5 brokers and Cent accounts.
 
 ## 2.2 Account
 
@@ -137,7 +137,7 @@ Execution Command
     ↓
 MT5 EA
     ↓
-Broker / HFM
+Broker / MT5 Server
     ↓
 Execution Result
     ↓
@@ -395,7 +395,7 @@ No uncontrolled averaging.
 
 ## 7.1 Cent accounts
 
-When an HFM Cent account is used, broker-native cent values must be normalized for the AUREXIS user interface and risk calculations.
+When a Cent account is used, broker-native cent values must be normalized for the AUREXIS user interface and risk calculations.
 
 Example concept:
 
@@ -775,7 +775,7 @@ Never paste production credentials into an AI coding prompt.
                        MT5 Agent
                             │
                             ▼
-                           HFM
+                         Broker
 ```
 
 ## Suggested separation
@@ -938,8 +938,8 @@ IMPLEMENTATION
 - AUREXIS is the product name.
 - Centralized Brain architecture.
 - MT5 is execution-only.
-- HFM is initial broker target.
-- HFM Cent account may be used for testing.
+- MT5 broker-flexible target.
+- Cent account may be used for testing.
 - Start with one account.
 - Architecture must scale to 5+ accounts.
 - XAUUSD is the initial/only instrument.

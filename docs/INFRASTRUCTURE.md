@@ -28,5 +28,5 @@ Passwords, private keys, API keys and trading credentials belong in a password m
 - VPS passwords
 - database passwords
 - Redis passwords
-- HFM passwords
+- broker/MT5 passwords
 - API tokens

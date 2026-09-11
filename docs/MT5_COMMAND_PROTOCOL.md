@@ -18,7 +18,7 @@ Execution Engine (Dispatches Command)
     ↓  [MT5 Command Protocol via authenticated WebSocket / REST]
 MT5 Agent / EA (Terminal Execution)
     ↓
-Broker Server (HFM)
+Broker Server (MT5 Broker)
 ```
 
 The protocol guarantees:

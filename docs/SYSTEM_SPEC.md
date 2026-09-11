@@ -2,7 +2,7 @@
 
 ## 1. System boundary
 
-Browser -> Web App -> API/Realtime -> Brain/Risk/Execution services -> MT5 Agent -> HFM
+Browser -> Web App -> API/Realtime -> Brain/Risk/Execution services -> MT5 Agent -> Broker Server
 
 ## 2. Authority model
 

@@ -7,7 +7,7 @@ AUREXIS is a centralized trading platform where market analysis, strategy logic,
 ## 2. Initial trading scope
 
 - XAUUSD only
-- HFM as initial broker target
+- Standard MT5 broker target (broker-flexible)
 - One test account first
 - Architecture must support multiple accounts (5+ target)
 - Tick-by-tick market processing

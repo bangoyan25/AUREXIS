@@ -239,7 +239,7 @@ class TestPhase4aRiskGatingAndSafety:
     @pytest.mark.asyncio
     async def test_non_demo_account_strictly_blocked(self, test_env):
         app, sf = test_env
-        _, account, agent, token = await _seed_test_account(sf, server="HFMarkets-Live-Server")
+        _, account, agent, token = await _seed_test_account(sf, server="Live-Broker-Server")
 
         with patch.object(agent_manager, "is_connected", return_value=True):
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:

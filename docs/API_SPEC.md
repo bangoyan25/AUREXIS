@@ -145,10 +145,10 @@ Create new trading account binding.
 - **Body:**
 ```json
 {
-  "label": "HFM Cent Account 1",
-  "broker": "HFM",
+  "label": "Demo Cent Account 1",
+  "broker": "Demo Broker",
   "mt5_account_number": "12345678",
-  "mt5_server": "HFMarkets-Demo",
+  "mt5_server": "DemoBroker-Demo",
   "broker_currency": "USD",
   "is_cent_account": true,
   "cent_normalization_factor": "0.01"

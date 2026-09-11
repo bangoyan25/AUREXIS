@@ -9,7 +9,7 @@ These decisions are protected from silent modification.
 - MT5 is execution-only
 - Risk Engine has authority over new-trade approval
 - XAUUSD is the initial/only trading instrument
-- HFM is the initial broker target
+- Broker-flexible MT5 architecture (any standard MT5 broker)
 - Start testing with one account
 - Architecture must be scalable to 5+ accounts
 - Tick-by-tick analysis target

@@ -66,8 +66,8 @@ SL/TP hit:
 - TP BUY: ask ≥ TP → fill at TP
 - Gap: fill at first available bid/ask beyond level.
 
-Commission: HFM Cent XAUUSD rate — UNDEFINED. Applied per-lot at entry and exit.
-Swap: HFM XAUUSD overnight rates — UNDEFINED. Applied at daily rollover.
+Commission: Broker Cent XAUUSD rate — UNDEFINED. Applied per-lot at entry and exit.
+Swap: Broker XAUUSD overnight rates — UNDEFINED. Applied at daily rollover.
 
 ---
 
@@ -88,7 +88,7 @@ Daily P&L, peak equity, drawdown tracked on simulated account state.
 
 ## 8. Account Normalization
 
-HFM Cent (SC) → USD: same `normalize_to_usd()` as live.
+Cent (SC) → USD: same `normalize_to_usd()` as live.
 USD → IDR: display-only. Exchange rate: fixed reference or UNDEFINED.
 
 ---
