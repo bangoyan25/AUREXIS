@@ -26,6 +26,7 @@ _in_memory_agent_ticks: dict[str, dict[str, dict[str, Any]]] = {}
 # In-process cache: id_str -> {symbol: {timeframe: list[bar_dict]}}
 _in_memory_account_bars: dict[str, dict[str, dict[str, list[dict[str, Any]]]]] = {}
 _in_memory_agent_bars: dict[str, dict[str, dict[str, list[dict[str, Any]]]]] = {}
+_in_memory_symbol_bars: dict[str, dict[str, list[dict[str, Any]]]] = {}
 
 CANONICAL_SYMBOL = "XAUUSD"
 
@@ -269,14 +270,21 @@ async def record_closed_bars(
         _in_memory_agent_bars[agent_id_str][norm_symbol] = {}
     _in_memory_agent_bars[agent_id_str][norm_symbol][norm_tf] = deduped
 
+    # Global symbol cache
+    if norm_symbol not in _in_memory_symbol_bars:
+        _in_memory_symbol_bars[norm_symbol] = {}
+    _in_memory_symbol_bars[norm_symbol][norm_tf] = deduped
+
     try:
         redis = get_cache_client()
         account_key = f"market_data:bars:account:{account_id_str}:{norm_symbol}:{norm_tf}"
         agent_key = f"market_data:bars:agent:{agent_id_str}:{norm_symbol}:{norm_tf}"
+        symbol_key = f"market_data:bars:symbol:{norm_symbol}:{norm_tf}"
         serialized = json.dumps(deduped)
         async with redis.pipeline(transaction=True) as pipe:
             pipe.set(account_key, serialized, ex=86400)
             pipe.set(agent_key, serialized, ex=86400)
+            pipe.set(symbol_key, serialized, ex=86400)
             await pipe.execute()
     except Exception as exc:
         logger.warning(
@@ -336,6 +344,44 @@ async def get_closed_bars(
             error=str(exc),
             account_id=account_id_str,
         )
+
+    # Fallback to active market symbol bars
+    return await get_symbol_closed_bars(norm_symbol, norm_tf)
+
+
+async def get_symbol_closed_bars(
+    symbol: str = CANONICAL_SYMBOL,
+    timeframe: str = "M15",
+) -> list[dict[str, Any]]:
+    """Retrieve stored closed bars for symbol across the platform."""
+    norm_symbol = normalize_symbol(symbol)
+    norm_tf = timeframe.strip().upper()
+
+    if norm_symbol in _in_memory_symbol_bars and norm_tf in _in_memory_symbol_bars[norm_symbol]:
+        return _in_memory_symbol_bars[norm_symbol][norm_tf]
+
+    # Search in any active account memory
+    for acct_data in _in_memory_account_bars.values():
+        if norm_symbol in acct_data and norm_tf in acct_data[norm_symbol] and acct_data[norm_symbol][norm_tf]:
+            return acct_data[norm_symbol][norm_tf]
+
+    # Search in any active agent memory
+    for agent_data in _in_memory_agent_bars.values():
+        if norm_symbol in agent_data and norm_tf in agent_data[norm_symbol] and agent_data[norm_symbol][norm_tf]:
+            return agent_data[norm_symbol][norm_tf]
+
+    try:
+        redis = get_cache_client()
+        symbol_key = f"market_data:bars:symbol:{norm_symbol}:{norm_tf}"
+        raw = await redis.get(symbol_key)
+        if raw:
+            bars_list = json.loads(raw)
+            if norm_symbol not in _in_memory_symbol_bars:
+                _in_memory_symbol_bars[norm_symbol] = {}
+            _in_memory_symbol_bars[norm_symbol][norm_tf] = bars_list
+            return bars_list
+    except Exception:
+        pass
 
     return []
 

@@ -37,10 +37,11 @@ export function CandlestickChart({
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const [hoverCoords, setHoverCoords] = useState<{ x: number; y: number } | null>(null);
 
-  // Dimensions
-  const height = 440;
-  const padding = { top: 25, right: 65, bottom: 45, left: 15 };
-  const volumeHeightRatio = 0.18;
+  // SVG Virtual Coordinate Dimensions (Resolution-independent viewBox)
+  const SVG_WIDTH = 1000;
+  const SVG_HEIGHT = 450;
+  const PADDING = { top: 30, right: 80, bottom: 45, left: 20 };
+  const VOLUME_RATIO = 0.18;
 
   const validData = useMemo(() => {
     return (data || []).filter(
@@ -58,7 +59,7 @@ export function CandlestickChart({
   // Price calculations
   const { minPrice, maxPrice, maxVolume, priceRange } = useMemo(() => {
     if (validData.length === 0) {
-      return { minPrice: 0, maxPrice: 100, maxVolume: 1, priceRange: 100 };
+      return { minPrice: 4350, maxPrice: 4400, maxVolume: 1000, priceRange: 50 };
     }
     let min = Infinity;
     let max = -Infinity;
@@ -75,7 +76,6 @@ export function CandlestickChart({
       if (livePrice > max) max = livePrice;
     }
 
-    // Add 8% vertical padding for wicks & price levels
     const diff = max - min || 1;
     const pad = diff * 0.08;
     const finalMin = min - pad;
@@ -89,33 +89,33 @@ export function CandlestickChart({
     };
   }, [validData, livePrice]);
 
-  const chartAreaHeight = height - padding.top - padding.bottom;
-  const priceAreaHeight = chartAreaHeight * (1 - volumeHeightRatio);
-  const volumeAreaHeight = chartAreaHeight * volumeHeightRatio;
+  const chartAreaWidth = SVG_WIDTH - PADDING.left - PADDING.right; // 900
+  const chartAreaHeight = SVG_HEIGHT - PADDING.top - PADDING.bottom; // 375
+  const priceAreaHeight = chartAreaHeight * (1 - VOLUME_RATIO); // ~307
+  const volumeAreaHeight = chartAreaHeight * VOLUME_RATIO; // ~68
 
   // Coordinate mappers
   const getY = useCallback(
     (price: number) => {
       const normalized = (maxPrice - price) / priceRange;
-      return padding.top + normalized * priceAreaHeight;
+      return PADDING.top + normalized * priceAreaHeight;
     },
-    [maxPrice, priceRange, priceAreaHeight, padding.top]
+    [maxPrice, priceRange, priceAreaHeight, PADDING.top]
   );
 
   const getVolY = useCallback(
     (vol: number) => {
       const normalized = Math.min(1, vol / maxVolume);
-      const topY = padding.top + priceAreaHeight + (1 - normalized) * volumeAreaHeight;
-      return topY;
+      return PADDING.top + priceAreaHeight + (1 - normalized) * volumeAreaHeight;
     },
-    [maxVolume, priceAreaHeight, volumeAreaHeight, padding.top]
+    [maxVolume, priceAreaHeight, volumeAreaHeight, PADDING.top]
   );
 
-  // Y-axis grid lines & price ticks (5 ticks)
+  // Y-axis grid lines (5 levels)
   const priceTicks = useMemo(() => {
     if (priceRange <= 0) return [];
     const ticks = [];
-    const count = 5;
+    const count = 6;
     for (let i = 0; i < count; i++) {
       const val = minPrice + (priceRange * i) / (count - 1);
       ticks.push({
@@ -126,21 +126,25 @@ export function CandlestickChart({
     return ticks;
   }, [minPrice, priceRange, getY]);
 
-  const activeCandle = hoverIndex !== null && validData[hoverIndex] ? validData[hoverIndex] : validData[validData.length - 1];
+  const activeCandle =
+    hoverIndex !== null && validData[hoverIndex]
+      ? validData[hoverIndex]
+      : validData.length > 0
+      ? validData[validData.length - 1]
+      : null;
 
   const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
-    if (!containerRef.current || validData.length === 0) return;
+    if (validData.length === 0) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    const clientX = e.clientX - rect.left;
-    const clientY = e.clientY - rect.top;
+    const svgX = ((e.clientX - rect.left) / rect.width) * SVG_WIDTH;
+    const svgY = ((e.clientY - rect.top) / rect.height) * SVG_HEIGHT;
 
-    const availableWidth = rect.width - padding.left - padding.right;
-    const candleSlotWidth = availableWidth / validData.length;
-    const idx = Math.floor((clientX - padding.left) / candleSlotWidth);
+    const slotWidth = chartAreaWidth / validData.length;
+    const idx = Math.floor((svgX - PADDING.left) / slotWidth);
 
     if (idx >= 0 && idx < validData.length) {
       setHoverIndex(idx);
-      setHoverCoords({ x: clientX, y: clientY });
+      setHoverCoords({ x: svgX, y: svgY });
     } else {
       setHoverIndex(null);
       setHoverCoords(null);
@@ -152,8 +156,12 @@ export function CandlestickChart({
     setHoverCoords(null);
   };
 
-  const currentPrice = livePrice || (validData.length > 0 ? (validData[validData.length - 1]?.close ?? null) : null);
+  const currentPrice =
+    livePrice || (validData.length > 0 ? validData[validData.length - 1]?.close ?? null : null);
   const currentPriceY = currentPrice ? getY(currentPrice) : null;
+
+  const slotWidth = validData.length > 0 ? chartAreaWidth / validData.length : 10;
+  const candleBodyWidth = Math.max(3, Math.min(12, slotWidth * 0.72));
 
   return (
     <div
@@ -221,230 +229,220 @@ export function CandlestickChart({
             </span>
           </div>
         ) : (
-          <div className="text-2xs font-mono text-aurexis-faint">Awaiting market bars...</div>
+          <div className="text-2xs font-mono text-aurexis-faint">Synchronizing market bars...</div>
         )}
       </div>
 
       {/* SVG Canvas Area */}
-      <div className="relative w-full" style={{ height }}>
-        {isLoading && (
+      <div className="relative w-full h-[450px]">
+        {isLoading && validData.length === 0 && (
           <div className="absolute inset-0 bg-aurexis-bg/60 backdrop-blur-[1px] flex items-center justify-center z-20">
             <span className="text-2xs font-mono text-aurexis-accent animate-pulse tracking-widest uppercase">
-              UPDATING CHART DATA...
+              SYNCHRONIZING REAL-TIME BROKER BARS...
             </span>
           </div>
         )}
 
-        {validData.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-aurexis-faint font-mono text-xs gap-1">
-            <p>No closed candle data available for {symbol} ({timeframe})</p>
-            <p className="text-2xs text-aurexis-subtle">Connecting to live MT5 broker stream...</p>
-          </div>
-        ) : (
-          <svg
-            className="w-full h-full block cursor-crosshair"
-            onMouseMove={handleMouseMove}
-            onMouseLeave={handleMouseLeave}
-          >
-            <defs>
-              <linearGradient id="volBullGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#22c55e" stopOpacity="0.4" />
-                <stop offset="100%" stopColor="#22c55e" stopOpacity="0.05" />
-              </linearGradient>
-              <linearGradient id="volBearGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#ef4444" stopOpacity="0.4" />
-                <stop offset="100%" stopColor="#ef4444" stopOpacity="0.05" />
-              </linearGradient>
-            </defs>
+        <svg
+          viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}
+          preserveAspectRatio="none"
+          className="w-full h-full block cursor-crosshair"
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
+        >
+          <defs>
+            <linearGradient id="volBullGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#22c55e" stopOpacity="0.5" />
+              <stop offset="100%" stopColor="#22c55e" stopOpacity="0.08" />
+            </linearGradient>
+            <linearGradient id="volBearGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#ef4444" stopOpacity="0.5" />
+              <stop offset="100%" stopColor="#ef4444" stopOpacity="0.08" />
+            </linearGradient>
+          </defs>
 
-            {/* Price Grid Lines (horizontal) */}
-            {priceTicks.map((tick, i) => (
-              <g key={`tick-${i}`}>
-                <line
-                  x1={padding.left}
-                  y1={tick.y}
-                  x2={`calc(100% - ${padding.right}px)`}
-                  y2={tick.y}
-                  stroke="rgba(255, 255, 255, 0.05)"
-                  strokeDasharray="3 3"
-                />
-                <text
-                  x={`calc(100% - ${padding.right - 8}px)`}
-                  y={tick.y + 4}
-                  fill="#71717a"
-                  fontSize="10"
-                  fontFamily="monospace"
-                >
-                  {tick.val.toFixed(2)}
-                </text>
-              </g>
-            ))}
+          {/* Background area */}
+          <rect width={SVG_WIDTH} height={SVG_HEIGHT} fill="#0d1117" />
 
-            {/* Volume Area Divider line */}
-            <line
-              x1={padding.left}
-              y1={padding.top + priceAreaHeight}
-              x2={`calc(100% - ${padding.right}px)`}
-              y2={padding.top + priceAreaHeight}
-              stroke="rgba(255, 255, 255, 0.08)"
-            />
+          {/* Price Grid Lines (horizontal) */}
+          {priceTicks.map((tick, i) => (
+            <g key={`tick-${i}`}>
+              <line
+                x1={PADDING.left}
+                y1={tick.y}
+                x2={SVG_WIDTH - PADDING.right}
+                y2={tick.y}
+                stroke="#21262d"
+                strokeDasharray="3 3"
+              />
+              <text
+                x={SVG_WIDTH - PADDING.right + 8}
+                y={tick.y + 3.5}
+                fill="#8b949e"
+                fontSize="10"
+                fontFamily="monospace"
+              >
+                {tick.val.toFixed(2)}
+              </text>
+            </g>
+          ))}
 
-            {/* Candlesticks & Volume Bars */}
-            {validData.map((d, index) => {
-              const count = validData.length;
-              const slotPercent = (100 - ((padding.left + padding.right) / 800) * 100) / count;
-              // Render candle within relative slot
-              const isBull = d.close >= d.open;
-              const openY = getY(d.open);
-              const closeY = getY(d.close);
-              const highY = getY(d.high);
-              const lowY = getY(d.low);
+          {/* Volume Area Divider line */}
+          <line
+            x1={PADDING.left}
+            y1={PADDING.top + priceAreaHeight}
+            x2={SVG_WIDTH - PADDING.right}
+            y2={PADDING.top + priceAreaHeight}
+            stroke="#30363d"
+          />
 
-              const bodyTop = Math.min(openY, closeY);
-              const bodyHeight = Math.max(2, Math.abs(closeY - openY));
+          {/* Candlesticks & Volume Bars */}
+          {validData.map((d, index) => {
+            const isBull = d.close >= d.open;
+            const openY = getY(d.open);
+            const closeY = getY(d.close);
+            const highY = getY(d.high);
+            const lowY = getY(d.low);
 
-              const volTop = getVolY(d.volume);
-              const volHeight = Math.max(1, padding.top + chartAreaHeight - volTop);
+            const bodyTop = Math.min(openY, closeY);
+            const bodyHeight = Math.max(2, Math.abs(closeY - openY));
 
-              const color = isBull ? "#22c55e" : "#ef4444";
-              const strokeColor = isBull ? "#16a34a" : "#dc2626";
+            const volTop = getVolY(d.volume);
+            const volHeight = Math.max(1, PADDING.top + chartAreaHeight - volTop);
 
-              // Slot center percentage
-              const xPercent =
-                ((padding.left + (index + 0.5) * ((800 - padding.left - padding.right) / count)) / 800) * 100;
+            const color = isBull ? "#22c55e" : "#ef4444";
+            const strokeColor = isBull ? "#16a34a" : "#dc2626";
 
-              return (
-                <g key={`candle-${d.time}-${index}`}>
-                  {/* Volume Bar */}
-                  <rect
-                    x={`calc(${xPercent}% - 3px)`}
-                    y={volTop}
-                    width="6"
-                    height={volHeight}
-                    fill={isBull ? "url(#volBullGrad)" : "url(#volBearGrad)"}
-                    stroke={color}
-                    strokeWidth="0.5"
-                    opacity="0.75"
-                  />
+            const slotCenter = PADDING.left + (index + 0.5) * slotWidth;
+            const bodyX = slotCenter - candleBodyWidth / 2;
 
-                  {/* Wick (High-Low Line) */}
-                  <line
-                    x1={`${xPercent}%`}
-                    y1={highY}
-                    x2={`${xPercent}%`}
-                    y2={lowY}
-                    stroke={strokeColor}
-                    strokeWidth="1.2"
-                  />
-
-                  {/* Candle Body */}
-                  <rect
-                    x={`calc(${xPercent}% - 4.5px)`}
-                    y={bodyTop}
-                    width="9"
-                    height={bodyHeight}
-                    fill={color}
-                    stroke={strokeColor}
-                    strokeWidth="0.8"
-                    rx="0.5"
-                  />
-
-                  {/* Time label on X-axis (every N candles) */}
-                  {index % Math.max(1, Math.floor(count / 6)) === 0 && (
-                    <text
-                      x={`${xPercent}%`}
-                      y={height - padding.bottom + 20}
-                      textAnchor="middle"
-                      fill="#71717a"
-                      fontSize="9"
-                      fontFamily="monospace"
-                    >
-                      {new Date(d.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                    </text>
-                  )}
-                </g>
-              );
-            })}
-
-            {/* Current Price Line */}
-            {currentPriceY !== null && currentPrice !== null && (
-              <g>
-                <line
-                  x1={padding.left}
-                  y1={currentPriceY}
-                  x2={`calc(100% - ${padding.right}px)`}
-                  y2={currentPriceY}
-                  stroke="#eab308"
-                  strokeWidth="1"
-                  strokeDasharray="4 3"
-                />
-                {/* Price tag on right scale */}
+            return (
+              <g key={`candle-${d.time}-${index}`}>
+                {/* Volume Bar */}
                 <rect
-                  x={`calc(100% - ${padding.right}px)`}
-                  y={currentPriceY - 8}
-                  width={padding.right - 4}
-                  height={16}
-                  fill="#eab308"
-                  rx="2"
+                  x={bodyX}
+                  y={volTop}
+                  width={candleBodyWidth}
+                  height={volHeight}
+                  fill={isBull ? "url(#volBullGrad)" : "url(#volBearGrad)"}
+                  stroke={color}
+                  strokeWidth="0.5"
+                  opacity="0.8"
                 />
-                <text
-                  x={`calc(100% - ${padding.right - 4}px)`}
-                  y={currentPriceY + 3.5}
-                  fill="#000000"
-                  fontSize="9.5"
-                  fontWeight="bold"
-                  fontFamily="monospace"
-                >
-                  {currentPrice.toFixed(2)}
-                </text>
-              </g>
-            )}
 
-            {/* Hover Crosshair & Details */}
-            {hoverCoords && activeCandle && (
-              <g>
-                {/* Vertical Crosshair Line */}
+                {/* Wick (High-Low Line) */}
                 <line
-                  x1={hoverCoords.x}
-                  y1={padding.top}
-                  x2={hoverCoords.x}
-                  y2={height - padding.bottom}
-                  stroke="rgba(255, 255, 255, 0.3)"
-                  strokeDasharray="3 3"
+                  x1={slotCenter}
+                  y1={highY}
+                  x2={slotCenter}
+                  y2={lowY}
+                  stroke={strokeColor}
+                  strokeWidth="1.2"
                 />
-                {/* Horizontal Crosshair Line */}
-                <line
-                  x1={padding.left}
-                  y1={hoverCoords.y}
-                  x2={`calc(100% - ${padding.right}px)`}
-                  y2={hoverCoords.y}
-                  stroke="rgba(255, 255, 255, 0.3)"
-                  strokeDasharray="3 3"
-                />
-                {/* Hover Price Tag */}
+
+                {/* Candle Body */}
                 <rect
-                  x={`calc(100% - ${padding.right}px)`}
-                  y={hoverCoords.y - 7}
-                  width={padding.right - 4}
-                  height={14}
-                  fill="#27272a"
-                  stroke="#3f3f46"
-                  strokeWidth="1"
-                  rx="1"
+                  x={bodyX}
+                  y={bodyTop}
+                  width={candleBodyWidth}
+                  height={bodyHeight}
+                  fill={color}
+                  stroke={strokeColor}
+                  strokeWidth="0.8"
+                  rx="0.5"
                 />
-                <text
-                  x={`calc(100% - ${padding.right - 4}px)`}
-                  y={hoverCoords.y + 3}
-                  fill="#fafafa"
-                  fontSize="9"
-                  fontFamily="monospace"
-                >
-                  {(maxPrice - ((hoverCoords.y - padding.top) / priceAreaHeight) * priceRange).toFixed(2)}
-                </text>
+
+                {/* Time label on X-axis */}
+                {index % Math.max(1, Math.floor(validData.length / 7)) === 0 && (
+                  <text
+                    x={slotCenter}
+                    y={SVG_HEIGHT - PADDING.bottom + 18}
+                    textAnchor="middle"
+                    fill="#8b949e"
+                    fontSize="9.5"
+                    fontFamily="monospace"
+                  >
+                    {new Date(d.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </text>
+                )}
               </g>
-            )}
-          </svg>
-        )}
+            );
+          })}
+
+          {/* Current Price Line */}
+          {currentPriceY !== null && currentPrice !== null && (
+            <g>
+              <line
+                x1={PADDING.left}
+                y1={currentPriceY}
+                x2={SVG_WIDTH - PADDING.right}
+                y2={currentPriceY}
+                stroke="#eab308"
+                strokeWidth="1.2"
+                strokeDasharray="4 3"
+              />
+              <rect
+                x={SVG_WIDTH - PADDING.right + 2}
+                y={currentPriceY - 8}
+                width={PADDING.right - 6}
+                height={16}
+                fill="#eab308"
+                rx="2"
+              />
+              <text
+                x={SVG_WIDTH - PADDING.right + 6}
+                y={currentPriceY + 3.5}
+                fill="#000000"
+                fontSize="9.5"
+                fontWeight="bold"
+                fontFamily="monospace"
+              >
+                {currentPrice.toFixed(2)}
+              </text>
+            </g>
+          )}
+
+          {/* Hover Crosshair & Details */}
+          {hoverCoords && activeCandle && (
+            <g>
+              <line
+                x1={hoverCoords.x}
+                y1={PADDING.top}
+                x2={hoverCoords.x}
+                y2={SVG_HEIGHT - PADDING.bottom}
+                stroke="rgba(255, 255, 255, 0.4)"
+                strokeDasharray="3 3"
+              />
+              <line
+                x1={PADDING.left}
+                y1={hoverCoords.y}
+                x2={SVG_WIDTH - PADDING.right}
+                y2={hoverCoords.y}
+                stroke="rgba(255, 255, 255, 0.4)"
+                strokeDasharray="3 3"
+              />
+              <rect
+                x={SVG_WIDTH - PADDING.right + 2}
+                y={hoverCoords.y - 7}
+                width={PADDING.right - 6}
+                height={14}
+                fill="#21262d"
+                stroke="#484f58"
+                strokeWidth="1"
+                rx="1"
+              />
+              <text
+                x={SVG_WIDTH - PADDING.right + 6}
+                y={hoverCoords.y + 3}
+                fill="#f0f6fc"
+                fontSize="9"
+                fontFamily="monospace"
+              >
+                {(maxPrice - ((hoverCoords.y - PADDING.top) / priceAreaHeight) * priceRange).toFixed(2)}
+              </text>
+            </g>
+          )}
+        </svg>
       </div>
 
       {/* Footer bar: Legend & Broker Info */}
@@ -457,13 +455,13 @@ export function CandlestickChart({
             <span className="w-2 h-2 rounded-sm bg-aurexis-danger" /> Bearish Candle
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-2 h-0.5 bg-yellow-500" /> Current Market Price
+            <span className="w-2 h-0.5 bg-yellow-500" /> Live Market Price
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span>SERVER TIME: UTC</span>
+          <span>SERVER: UTC</span>
           <span>·</span>
-          <span>AUTHORITATIVE MT5 STREAM</span>
+          <span>AUTHORITATIVE MT5 STREAM ({validData.length} BARS)</span>
         </div>
       </div>
     </div>

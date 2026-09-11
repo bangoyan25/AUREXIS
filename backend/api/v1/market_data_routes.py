@@ -119,6 +119,51 @@ async def get_risk_decision(
     return out
 
 
+@router.get("/market/chart")
+async def get_global_market_chart(
+    _user: Annotated[str, Depends(get_current_user)],
+    timeframe: str = "M15",
+    limit: int = 100,
+) -> dict[str, Any]:
+    """
+    Get live XAUUSD market chart bars for any authenticated operator.
+    Does not require a specific trading account to view market pricing.
+    """
+    norm_tf = timeframe.strip().upper()
+    valid_tfs = {"M1", "M5", "M15", "M30", "H1", "H4", "D1"}
+    if norm_tf not in valid_tfs:
+        norm_tf = "M15"
+
+    bars = await market_data_service.get_symbol_closed_bars(CANONICAL_SYMBOL, norm_tf)
+    if not bars and norm_tf != "M15":
+        bars = await market_data_service.get_symbol_closed_bars(CANONICAL_SYMBOL, "M15")
+        if bars:
+            norm_tf = "M15"
+
+    if limit and limit > 0 and len(bars) > limit:
+        bars = bars[-limit:]
+
+    chart_series = [
+        {
+            "time": b.get("open_time"),
+            "open": float(b.get("open", 0)),
+            "high": float(b.get("high", 0)),
+            "low": float(b.get("low", 0)),
+            "close": float(b.get("close", 0)),
+            "volume": float(b.get("volume", 0)),
+        }
+        for b in bars
+    ]
+
+    return {
+        "symbol": CANONICAL_SYMBOL,
+        "timeframe": norm_tf,
+        "count": len(chart_series),
+        "bars": chart_series,
+        "cached": True,
+    }
+
+
 @router.get("/market/{account_id}/chart")
 async def get_market_chart(
     account_id: str,

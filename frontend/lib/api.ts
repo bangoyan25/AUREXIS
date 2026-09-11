@@ -341,15 +341,23 @@ export const marketApi = {
   // Phase 3: account-scoped live market tick & freshness
   getAccountState: (accountId: string, token: string) =>
     apiFetch<AccountMarketStateResponse>(`/api/v1/market/${accountId}/state`, { token }),
-  getChart: (accountId: string, token: string, timeframe: string = "M5", limit: number = 100) =>
+  getChart: (accountId: string, token: string, timeframe: string = "M15", limit: number = 100) =>
     apiFetch<{
-      account_id: string;
+      account_id?: string;
       symbol: string;
       timeframe: string;
       count: number;
       bars: Array<{ time: string; open: number; high: number; low: number; close: number; volume: number }>;
       cached: boolean;
     }>(`/api/v1/market/${accountId}/chart?timeframe=${encodeURIComponent(timeframe)}&limit=${limit}`, { token }),
+  getGlobalChart: (token: string, timeframe: string = "M15", limit: number = 100) =>
+    apiFetch<{
+      symbol: string;
+      timeframe: string;
+      count: number;
+      bars: Array<{ time: string; open: number; high: number; low: number; close: number; volume: number }>;
+      cached: boolean;
+    }>(`/api/v1/market/chart?timeframe=${encodeURIComponent(timeframe)}&limit=${limit}`, { token }),
 };
 export const signalsApi = {
   list: (token: string) =>
