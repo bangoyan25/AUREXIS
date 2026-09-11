@@ -258,11 +258,8 @@ async def evaluate_strategy_for_account(
             symbol=CANONICAL_SYMBOL,
             bid=Decimal(tick_dict["bid"]),
             ask=Decimal(tick_dict["ask"]),
-            spread=Decimal(tick_dict["spread"]),
-            point=Decimal(tick_dict.get("point", "0.01")),
-            digits=int(tick_dict.get("digits", 2)),
             tick_time=_parse_tick_time(tick_dict.get("tick_time"), tick_dict["received_at"]),
-            volume=Decimal("1"),
+            volume=Decimal(str(tick_dict.get("tick_volume") or 1)),
         )
     except Exception as exc:
         logger.warning("strategy.tick_parse_error", error=str(exc), account_id=str(account_id))
