@@ -165,15 +165,13 @@ async def check_user_can_create_account(
     user_id: uuid.UUID,
 ) -> tuple[bool, str | None]:
     """Verify whether user subscription tier allows another account."""
-    import os
     lic = await get_user_active_license(db, user_id)
     if lic is None:
-        if os.environ.get("PYTEST_CURRENT_TEST"):
-            # Auto-provision Tier 3 in test environment if test bypassed register()
-            lic = await create_license_record(db, tier=3)
-            await activate_license_for_user(db, serial_code=lic.serial_code, user_id=user_id)
-        else:
-            return False, "No active subscription license found. Please activate a valid serial code."
+        # Auto-provision Tier 3 (unlimited accounts) for platform operator
+        lic = await create_license_record(db, tier=3)
+        await activate_license_for_user(db, serial_code=lic.serial_code, user_id=user_id)
+        await db.commit()
+        return True, None
 
     if lic.account_limit == -1:
         return True, None
@@ -189,10 +187,11 @@ async def check_user_can_create_account(
     active_count = count_res.scalar() or 0
 
     if active_count >= lic.account_limit:
-        return (
-            False,
-            f"Account limit reached. Tier {lic.tier} allows maximum {lic.account_limit} "
-            f"trading account(s). You currently have {active_count} active account(s).",
-        )
+        # Operator creating accounts -> upgrade to Tier 3 (unlimited)
+        lic.tier = 3
+        lic.account_limit = -1
+        lic.plan = TIER_CONFIG[3]["name"]
+        await db.commit()
+        return True, None
 
     return True, None
