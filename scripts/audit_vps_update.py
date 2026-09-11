@@ -171,7 +171,13 @@ def run_audit():
                 acc1 = httpx.post(
                     "http://127.0.0.1:8000/api/v1/accounts",
                     headers=hdrs,
-                    json={"broker_name": "Exness", "account_number": f"ex_{uid}_1", "account_type": "CENT", "currency": "USDC"},
+                    json={
+                        "label": f"Exness Cent {uid}",
+                        "broker": "Exness",
+                        "mt5_account_number": f"ex_{uid}_1",
+                        "is_cent_account": True,
+                        "broker_currency": "USDC",
+                    },
                     timeout=5.0,
                 )
                 print(f"  + Account 1 creation (Exness Cent) -> Status {acc1.status_code}")
@@ -182,7 +188,13 @@ def run_audit():
                 acc2 = httpx.post(
                     "http://127.0.0.1:8000/api/v1/accounts",
                     headers=hdrs,
-                    json={"broker_name": "HFM", "account_number": f"hfm_{uid}_2", "account_type": "STANDARD", "currency": "USD"},
+                    json={
+                        "label": f"HFM {uid}",
+                        "broker": "HFM",
+                        "mt5_account_number": f"hfm_{uid}_2",
+                        "is_cent_account": False,
+                        "broker_currency": "USD",
+                    },
                     timeout=5.0,
                 )
                 print(f"  + Account 2 creation (Tier 1 limit check) -> Status {acc2.status_code}, detail: {acc2.json().get('detail')}")
