@@ -22,7 +22,7 @@ if [[ ! -f ".env.local" ]]; then
     cat << 'EOF' > .env.local
 NEXT_PUBLIC_API_BASE_URL=https://app.aurexis.web.id
 NEXT_PUBLIC_WS_URL=wss://app.aurexis.web.id
-NEXT_PUBLIC_TRADING_MODE=SIMULATION
+NEXT_PUBLIC_TRADING_MODE=production
 NODE_ENV=production
 EOF
 fi
