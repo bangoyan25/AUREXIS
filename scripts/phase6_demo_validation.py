@@ -27,8 +27,15 @@ async def run_phase6():
     # Resolve target demo account connected to MT5 agent
     async with AsyncSessionLocal() as db:
         from backend.db.models.mt5_agent import MT5Agent
-        agent_res = await db.execute(select(MT5Agent).where(MT5Agent.is_active.is_(True)))
+        agent_res = await db.execute(
+            select(MT5Agent).where(MT5Agent.last_known_status == "CONNECTED")
+        )
         agent = agent_res.scalars().first()
+        if agent is None:
+            # fallback to any agent with account_id
+            agent_res2 = await db.execute(select(MT5Agent))
+            agent = agent_res2.scalars().first()
+
         if agent is not None and agent.account_id:
             target = await db.get(TradingAccount, agent.account_id)
         else:
