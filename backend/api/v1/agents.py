@@ -82,11 +82,15 @@ class AgentHeartbeatResponse(BaseModel):
 
 
 def _to_response(agent: MT5Agent) -> AgentResponse:
+    from backend.ws.agent_manager import agent_manager
+    is_conn = agent_manager.is_connected(str(agent.id))
+    status_val = "CONNECTED" if is_conn else agent.last_known_status
+
     return AgentResponse(
         id=str(agent.id),
         account_id=str(agent.account_id),
         label=agent.label,
-        last_known_status=agent.last_known_status,
+        last_known_status=status_val,
         last_seen_at=agent.last_seen_at,
         mt5_version=agent.mt5_version,
         ea_version=agent.ea_version,

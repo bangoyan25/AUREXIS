@@ -235,6 +235,7 @@ async def agent_websocket_endpoint(
                     curr = res.scalar_one_or_none()
                     if curr:
                         curr.last_seen_at = now
+                        curr.last_known_status = "CONNECTED"
                         if msg.mt5_version:
                             curr.mt5_version = msg.mt5_version
                         if msg.ea_version:
@@ -249,6 +250,7 @@ async def agent_websocket_endpoint(
                     curr = res.scalar_one_or_none()
                     if curr:
                         curr.last_seen_at = now
+                        curr.last_known_status = "CONNECTED"
                         if msg.mt5_version:
                             curr.mt5_version = msg.mt5_version
                         if msg.ea_version:
@@ -336,4 +338,13 @@ async def agent_websocket_endpoint(
         logger.warning("agent_ws.exception", agent_id=agent_id_str, error=str(exc))
     finally:
         agent_manager.disconnect(agent_id_str, websocket)
+        try:
+            async with session_factory() as db:
+                res = await db.execute(select(MT5Agent).where(MT5Agent.id == agent_uuid))
+                curr = res.scalar_one_or_none()
+                if curr:
+                    curr.last_known_status = "DISCONNECTED"
+                    await db.commit()
+        except Exception:
+            pass
         logger.info("agent_ws.disconnected", agent_id=agent_id_str)
