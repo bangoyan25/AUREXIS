@@ -215,7 +215,7 @@ async def run_phase6():
     print("PHASE 6H: FAILURE SAFETY VERIFICATION SUITE")
     print("=" * 60)
 
-    # 1. Kill switch
+    # 1. Kill switch -> BLOCK -> KILL_SWITCH_ACTIVE
     print("1. Kill switch safety test...")
     r_arm = client.post(f"/accounts/{account_id}/strategy/kill-switch", json={"active": True})
     assert r_arm.status_code == 200
@@ -229,42 +229,60 @@ async def run_phase6():
     print(f"   Disarmed kill switch: decision={rg_restored.get('decision')} reason={rg_restored.get('reason_code')}")
     assert rg_restored.get("decision") == "ALLOW" and rg_restored.get("reason_code") == "RISK_OK"
 
-    # 2. Disabled strategy
-    print("2. Disabled strategy test...")
-    strat_disabled = client.get(f"/accounts/{account_id}/strategy").json()
-    assert strat_disabled.get("enabled") is False
-    eval_dis = client.post(f"/accounts/{account_id}/strategy/evaluate").json()
-    print(f"   Disabled evaluation: execution_reason={eval_dis.get('execution_reason')}")
-    assert eval_dis.get("execution_reason") == "STRATEGY_DISABLED"
+    # 2. Agent disconnect -> BLOCK -> AGENT_OFFLINE
+    print("2. Agent disconnect safety test...")
+    async with AsyncSessionLocal() as db:
+        from backend.services.risk_gate import evaluate_risk_gate
+        rg_offline = await evaluate_risk_gate(db, account_id, override_agent_connected=False)
+        print(f"   Agent offline gate: decision={rg_offline.decision} reason={rg_offline.reason_code}")
+        assert rg_offline.decision == "BLOCK" and rg_offline.reason_code == "AGENT_OFFLINE"
 
-    # 3. Dry run mode
-    print("3. Dry run protection test...")
+    # 3. Stale market data -> BLOCK -> MARKET_DATA_STALE
+    print("3. Stale market data safety test...")
+    async with AsyncSessionLocal() as db:
+        from datetime import timedelta
+        stale_tick = {
+            "agent_id": "3c511fdb-0759-4c60-aef9-08215a5f57a6",
+            "account_id": str(account_id),
+            "symbol": "XAUUSD",
+            "bid": "4348.00",
+            "ask": "4348.20",
+            "spread": "0.20",
+            "point": "0.01",
+            "digits": 2,
+            "tick_time": "2026.09.11 13:00:00",
+            "received_at": (datetime.now(UTC) - timedelta(seconds=15)).isoformat(),
+        }
+        rg_stale = await evaluate_risk_gate(db, account_id, override_tick=stale_tick, override_agent_connected=True)
+        print(f"   Stale market gate: decision={rg_stale.decision} reason={rg_stale.reason_code}")
+        assert rg_stale.decision == "BLOCK" and rg_stale.reason_code == "MARKET_DATA_STALE"
+
+    # 4. Dry run protection
+    print("4. Dry run protection test...")
     client.post(f"/accounts/{account_id}/strategy/enable", json={"dry_run": True})
     eval_dry = client.post(f"/accounts/{account_id}/strategy/evaluate").json()
     print(f"   Dry-run active: dry_run={eval_dry.get('dry_run')} exec_status={eval_dry.get('execution_status')}")
     assert eval_dry.get("dry_run") is True
     client.post(f"/accounts/{account_id}/strategy/disable")
 
-    # 4. Duplicate candle protection (CANDLE_COOLDOWN)
-    print("4. Duplicate candle protection test...")
-    async with AsyncSessionLocal() as db:
-        from backend.services.strategy_service import get_or_create_strategy_state, evaluate_strategy_for_account
-        state = await get_or_create_strategy_state(db, account_id)
-        state.enabled = True
-        state.dry_run = True
-        state.last_signal_candle_ts = datetime.now(UTC)
-        await db.commit()
+    # 5. Disabled strategy
+    print("5. Disabled strategy test...")
+    strat_disabled = client.get(f"/accounts/{account_id}/strategy").json()
+    assert strat_disabled.get("enabled") is False
+    eval_dis = client.post(f"/accounts/{account_id}/strategy/evaluate").json()
+    print(f"   Disabled evaluation: execution_reason={eval_dis.get('execution_reason')}")
+    assert eval_dis.get("execution_reason") == "STRATEGY_DISABLED"
 
-        dup_eval = await evaluate_strategy_for_account(db, account_id)
-        print(f"   Cooldown check: execution_reason={dup_eval.get('execution_reason')}")
-        assert dup_eval.get("execution_reason") == "CANDLE_COOLDOWN"
+    # 6. Duplicate candle protection (CANDLE_COOLDOWN)
+    print("6. Duplicate candle cooldown test...")
+    client.post(f"/accounts/{account_id}/strategy/enable", json={"dry_run": True})
+    eval_dup = client.post(f"/accounts/{account_id}/strategy/evaluate").json()
+    print(f"   Duplicate evaluation: execution_reason={eval_dup.get('execution_reason')}")
+    assert eval_dup.get("execution_reason") == "CANDLE_COOLDOWN"
+    client.post(f"/accounts/{account_id}/strategy/disable")
 
-        state.enabled = False
-        state.dry_run = True
-        await db.commit()
-
-    # 5. Non-demo account protection
-    print("5. Non-demo live execution rejection test...")
+    # 7. Non-demo account protection
+    print("7. Non-demo account rejection test...")
     async with AsyncSessionLocal() as db:
         from backend.services.strategy_service import _is_confirmed_demo
         fake_real = TradingAccount(broker="Real Broker", mt5_server="RealBroker-Live-01", label="Real")
