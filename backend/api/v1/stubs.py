@@ -54,8 +54,47 @@ _NOTE_MARKET = (
 @router.get("/risk/{account_id}")
 async def get_risk_state(
     account_id: str,
-    _user: Annotated[str, Depends(get_current_user)],
+    user_id: Annotated[str, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict[str, Any]:
+    try:
+        acct_uuid = uuid.UUID(account_id)
+        user_uuid = uuid.UUID(user_id)
+        acct_stmt = select(TradingAccount).where(
+            TradingAccount.id == acct_uuid,
+            TradingAccount.user_id == user_uuid,
+        )
+        res = await db.execute(acct_stmt)
+        account = res.scalar_one_or_none()
+        if account is not None:
+            from backend.services.risk_gate import evaluate_risk_gate, CANONICAL_SYMBOL
+            gate = await evaluate_risk_gate(db, account.id, CANONICAL_SYMBOL)
+            is_allow = gate.decision == "ALLOW"
+            return {
+                "account_id": str(account.id),
+                "risk_state": "NORMAL" if is_allow else "BLOCKED",
+                "trading_allowed": is_allow,
+                "block_reason": None if is_allow else gate.reason_code,
+                "note": gate.reason,
+                "parameters": {
+                    "daily_loss_limit_usd": "50.00",
+                    "max_drawdown_usd": "100.00",
+                    "max_open_positions": 1,
+                    "default_lot_size": "0.01",
+                    "risk_per_trade_pct": "1.0",
+                    "profit_lock_floor_usd": "3.00",
+                    "profit_lock_retrace_pct": "30.0",
+                    "profit_lock_threshold_usd": "$10.00",
+                    "profit_lock_floor_pct": "30%",
+                    "profit_lock_formula": "PCT_RETRACE",
+                    "profit_lock_status": "ACTIVE" if is_allow else "INACTIVE",
+                    "drawdown_reference": "LIFETIME_HWM",
+                    "daily_reset_timezone": "UTC",
+                },
+            }
+    except Exception:
+        pass
+
     return {
         "account_id": account_id,
         "risk_state": _NC,
