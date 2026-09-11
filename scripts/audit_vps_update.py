@@ -13,7 +13,9 @@ def run_audit():
 
     print("\n[1] Checking Database Schema & Tables...")
     try:
-        from backend.config import settings
+        import os
+        sys.path.insert(0, os.path.abspath("."))
+        from backend.core.config import settings
         engine = create_engine(str(settings.database_url_sync))
         inspector = inspect(engine)
         tables = inspector.get_table_names()
